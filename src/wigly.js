@@ -179,7 +179,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     let children = tree["children"] || [];
     let lifecycle = tree["lifecycle"] || {};
 
-    if (typeof children === "string") {
+    if (typeof children === "string" || typeof children === "number") {
       children = [children];
     }
 
@@ -191,7 +191,9 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     values["tag"] = tag;
     values["lifecycle"] = lifecycle;
     values["attr"] = tree;
-    values["children"] = children.map(child => transform(child, currentProps, currentChildren));
+    values["children"] = [];
+    for (let i = 0; i < children.length; i++)
+      values["children"].push(transform(children[i], currentProps, currentChildren));
     return values;
   }
 
