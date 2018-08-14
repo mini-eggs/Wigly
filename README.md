@@ -8,7 +8,7 @@ I was rewriting a website of mine. Was aiming for zero dependencies and the leas
 
 #### What
 
-It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (2.5kb gzipped).
+It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (the ES6 build is 1.2kb gzipped).
 
 #### Live example
 
