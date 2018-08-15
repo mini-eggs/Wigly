@@ -19,7 +19,7 @@ It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from 
 Using ECMAScript 5:
 
 ```html
-<script src="https://unpkg.com/wigly@0.0.19/dist/es5.js"></script>
+<script src="https://unpkg.com/wigly@0.0.21/dist/es5.js"></script>
 <script>
     var component = function () {
         return { children: "Hello, World!" }

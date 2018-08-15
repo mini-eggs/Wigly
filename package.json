@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "main": "dist/es5.js",
   "scripts": {
     "start": "npm run es5 && npm run es6",

@@ -146,6 +146,23 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       return transform(rendered);
     }
 
+    // stateless component
+    if (typeof tree === "function" || typeof tree["tag"] === "function") {
+      let f = tree["tag"] || tree;
+
+      let props = {};
+      for (let k in tree) if (!special[k]) props[k] = tree[k];
+
+      let args = {};
+      args["props"] = props;
+      args["children"] = children;
+
+      let rendered = f(args) || { tag: "template" }; // renderless default
+      rendered["lifecycle"] = {};
+
+      return transform(rendered);
+    }
+
     // top level component
     if (tree["isComponent"]) {
       return transform({ tag: tree });
@@ -191,13 +208,6 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
 
     nextAppState[tree["counter"]].push(state); // guess how long this took me
 
-    let setState = (f, cb) => {
-      nextAppState[tree["counter"]][n] = { ...state, ...f(state) };
-      appState = nextAppState;
-      nextAppState = [];
-      scheduleRender(transform(rawTree), cb);
-    };
-
     let bind = obj => {
       for (let key in obj) {
         let apply = (key, f) => {
@@ -213,6 +223,21 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
         apply(key, obj[key]);
       }
       return obj;
+    };
+
+    let setState = (f, cb) => {
+      let nextState = { ...state, ...f(state) };
+      nextAppState[tree["counter"]][n] = nextState;
+      appState = nextAppState;
+      nextAppState = [];
+
+      let ctx = tree["methods"];
+      ctx["state"] = nextState;
+      ctx["props"] = props;
+      ctx["children"] = children;
+      ctx["setState"] = setState;
+
+      scheduleRender(transform(rawTree), cb.bind({ ...ctx }));
     };
 
     let values = bind({ ...tree["methods"] }); // mangle
