@@ -4,7 +4,7 @@ let undefinedNoop = () => {};
 
 let createElement = tree => {
   let isSimple = typeof tree === "string" || typeof tree === "number";
-  let el = isSimple ? document.createTextNode(tree) : document.createElement(tree.tag);
+  let el = isSimple ? document.createTextNode(tree) : document.createElement(tree["tag"]);
 
   if (!isSimple) {
     for (let child of tree["children"]) {
@@ -24,7 +24,7 @@ let createElement = tree => {
 };
 
 let createOrUpdateAttributes = (el, key, nextValue, staleValue) => {
-  if (key === "style") {
+  if (key === "style" && nextValue !== undefined) {
     for (let i in { ...nextValue }) el[key][i] = nextValue[i];
   } else if (key[0] === "o" && key[1] === "n") {
     key = key.substr(2);
@@ -44,7 +44,9 @@ let removeElement = (parent, element, old, tree) => {
 let removeChildren = (element, old, tree) => {
   if (tree && (tree.attr || tree.children)) {
     for (let i = 0; i < tree.children.length; i++) {
-      removeChildren(element.childNodes[i], old.children[i], tree.children[i]);
+      if (element.childNodes[i]) {
+        removeChildren(element.childNodes[i], old.children[i], tree.children[i]);
+      }
     }
   }
 
@@ -88,8 +90,8 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
       }
     } else {
       let oldElements = [];
-      let oldChildren = oldTree.children;
-      let children = currTree.children;
+      let oldChildren = oldTree["children"];
+      let children = currTree["children"];
 
       for (let i = 0; i < oldChildren.length; i++) {
         oldElements[i] = element.childNodes[i];
@@ -114,102 +116,85 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
   return cb() || element;
 };
 
-let uniqueCounter = 0;
-export let component = signature => {
-  let data = signature["data"] || valueNoop; // mangled
-  let mounted = signature["mounted"] || undefinedNoop;
-  let updated = signature["updated"] || undefinedNoop;
-  let destroyed = signature["destroyed"] || undefinedNoop;
-  let render = signature["render"] || nullNoop;
-
-  delete signature["data"];
-  delete signature["mounted"];
-  delete signature["updated"];
-  delete signature["destroyed"];
-  delete signature["render"];
-
-  let methods = signature;
-
-  let lifecycle = {};
-  lifecycle["mounted"] = mounted;
-  lifecycle["updated"] = updated;
-  lifecycle["destroyed"] = destroyed;
-
-  return {
-    counter: ++uniqueCounter,
-    isComponent: true,
-    lifecycle: lifecycle,
-    methods,
-    data,
-    render
-  };
-};
-
 export let render = (rawTree, renderElement, cb = undefinedNoop) => {
+  let special = {};
+  special["tag"] = true;
+  special["lifecycle"] = true;
+  special["lifecycle"] = true;
   let staleElement;
   let staleTree;
   let appState = [];
+  let nextAppState = [];
 
   return scheduleRender(transform(rawTree), cb);
 
-  function transform(tree, currentProps = {}, currentChildren = []) {
-    if (tree.isComponent || (tree.tag && tree.tag.isComponent)) {
-      if (!tree.isComponent) {
-        let { tag, children, ...attr } = tree;
-        currentProps = attr;
-        currentChildren = children;
-        tree = tree.tag;
-      }
-
-      let ctx = applyContext(tree, currentProps, currentChildren);
-      let rendered = tree.render.call(ctx);
-      rendered["lifecycle"] = ctx["lifecycle"];
-      return transform(rendered, currentProps, currentChildren);
-    }
-
-    if (typeof tree.tag === "function") {
-      return transform(tree.tag({ props: currentProps, children: currentChildren }), currentProps, currentChildren);
-    }
-
+  function transform(tree) {
+    // end of tree
     if (typeof tree === "string" || typeof tree === "number") {
       return tree;
     }
 
-    let tag = tree["tag"] || "div";
-    let children = tree["children"] || [];
-    let lifecycle = tree["lifecycle"] || {};
+    // normal component
+    if (tree["tag"] && tree["tag"]["isComponent"]) {
+      let props = {};
+      for (let k in tree) if (!special[k]) props[k] = tree[k];
 
+      let ctx = applyContext(tree["tag"], props, tree["children"]);
+      let rendered = tree["tag"]["render"].call(ctx) || { tag: "template" }; // renderless default
+      rendered["lifecycle"] = ctx["lifecycle"];
+
+      return transform(rendered);
+    }
+
+    // top level component
+    if (tree["isComponent"]) {
+      return transform({ tag: tree });
+    }
+
+    let attr = {};
+    for (let k in tree) if (!special[k]) attr[k] = tree[k];
+
+    // fix children
+    let children = tree["children"] || [];
     if (typeof children === "string" || typeof children === "number") {
       children = [children];
     }
 
-    delete tree["tag"];
-    delete tree["children"];
-    delete tree["lifecycle"];
-
-    let values = {}; // mangle
-    values["tag"] = tag;
-    values["lifecycle"] = lifecycle;
-    values["attr"] = tree;
-    values["children"] = [];
-    for (let i = 0; i < children.length; i++)
-      values["children"].push(transform(children[i], currentProps, currentChildren));
+    let values = {};
+    values["tag"] = tree["tag"] || "div";
+    values["lifecycle"] = tree["lifecycle"] || {};
+    values["attr"] = attr;
+    values["children"] = children.map(transform);
     return values;
   }
 
   function applyContext(tree, props, children) {
-    let state = appState[tree.counter];
+    let n = (nextAppState[tree["counter"]] || []).length; // instance # of this component
+
+    if (!appState[tree["counter"]]) {
+      appState[tree["counter"]] = [];
+    }
+
+    if (!nextAppState[tree["counter"]]) {
+      nextAppState[tree["counter"]] = [];
+    }
+
+    // get current entry
+    let state = appState[tree["counter"]].shift();
 
     if (!state) {
       let initialCtx = {};
       initialCtx["props"] = props;
       initialCtx["children"] = children;
-      state = tree.data.call(initialCtx);
+      state = Object.assign(tree["data"].call(initialCtx));
     }
 
+    nextAppState[tree["counter"]].push(state); // guess how long this took me
+
     let setState = (f, cb) => {
-      state = { ...state, ...f({ ...state }) };
-      appState[tree.counter] = state;
+      nextAppState[tree["counter"]][n] = { ...state, ...f(state) };
+      appState = nextAppState;
+      nextAppState = [];
       scheduleRender(transform(rawTree), cb);
     };
 
@@ -217,7 +202,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       for (let key in obj) {
         let apply = (key, f) => {
           obj[key] = (...args) => {
-            let ctx = { ...tree.methods };
+            let ctx = tree["methods"];
             ctx["state"] = state;
             ctx["props"] = props;
             ctx["children"] = children;
@@ -230,8 +215,8 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       return obj;
     };
 
-    let values = bind(tree.methods); // mangle
-    values["lifecycle"] = bind(tree.lifecycle);
+    let values = bind({ ...tree["methods"] }); // mangle
+    values["lifecycle"] = bind(tree["lifecycle"]);
     values["state"] = state;
     values["props"] = props;
     values["children"] = children;
@@ -246,4 +231,33 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     staleElement = patch(renderElement, staleElement, staleTree, tree, cb);
     staleTree = tree;
   }
+};
+
+let uniqueCounter = 0;
+export let component = signature => {
+  let data = signature["data"] || valueNoop; // mangled
+  let mounted = signature["mounted"] || undefinedNoop;
+  let updated = signature["updated"] || undefinedNoop;
+  let destroyed = signature["destroyed"] || undefinedNoop;
+  let render = signature["render"] || nullNoop;
+
+  delete signature["data"];
+  delete signature["mounted"];
+  delete signature["updated"];
+  delete signature["destroyed"];
+  delete signature["render"];
+
+  let lifecycle = {};
+  lifecycle["mounted"] = mounted;
+  lifecycle["updated"] = updated;
+  lifecycle["destroyed"] = destroyed;
+
+  let values = {};
+  values["isComponent"] = true;
+  values["counter"] = uniqueCounter++;
+  values["lifecycle"] = lifecycle;
+  values["methods"] = signature;
+  values["data"] = data;
+  values["render"] = render;
+  return values;
 };
