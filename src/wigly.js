@@ -15,7 +15,7 @@ let createElement = tree => {
       createOrUpdateAttributes(el, key, tree["attr"][key], null);
     }
 
-    if (tree["lifecycle"]["mounted"]) {
+    if (tree["lifecycle"] && tree["lifecycle"]["mounted"]) {
       tree["lifecycle"]["mounted"](el);
     }
   }
@@ -28,7 +28,7 @@ let createOrUpdateAttributes = (el, key, nextValue, staleValue) => {
     for (let i in { ...nextValue }) el[key][i] = nextValue[i];
   } else if (key[0] === "o" && key[1] === "n") {
     key = key.substr(2);
-    staleValue && el.removeEventListener(key, staleValue);
+    staleValue && el.removeEventListener(key, staleValue); // meditate on this
     el.addEventListener(key, nextValue);
   } else if (nextValue) {
     el.setAttribute(key, nextValue);
@@ -120,56 +120,76 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   let special = {};
   special["tag"] = true;
   special["lifecycle"] = true;
-  special["lifecycle"] = true;
+  special["children"] = true;
+
+  let methodRules = {};
+  methodRules["data"] = true;
+  methodRules["mounted"] = true;
+  methodRules["updated"] = true;
+  methodRules["destroyed"] = true;
+  methodRules["render"] = true;
+
   let staleElement;
   let staleTree;
-  let appState = [];
-  let nextAppState = [];
 
-  return scheduleRender(transform(rawTree), cb);
-
-  function transform(tree) {
+  let transform = tree => {
     // end of tree
-    if (typeof tree === "string" || typeof tree === "number") {
+    let type = typeof tree;
+    if (type === "string" || type === "number") {
       return tree;
     }
 
-    // normal component
-    if (tree["tag"] && tree["tag"]["isComponent"]) {
-      let props = {};
-      for (let k in tree) if (!special[k]) props[k] = tree[k];
-
-      let ctx = applyContext(tree["tag"], props, tree["children"]);
-      let rendered = tree["tag"]["render"].call(ctx) || { tag: "template" }; // renderless default
-      rendered["lifecycle"] = ctx["lifecycle"];
-
-      return transform(rendered);
+    let props = {}; // or attr
+    for (let k in tree) {
+      if (!special[k]) {
+        props[k] = tree[k];
+      }
     }
 
-    // stateless component
-    if (typeof tree === "function" || typeof tree["tag"] === "function") {
-      let f = tree["tag"] || tree;
+    // component
+    if (typeof tree["tag"] === "function") {
+      let instance = tree["tag"]();
+      let data = instance["data"] || valueNoop;
+      let render = instance["render"] || (() => instance); // weird but quick fix for functional components
+      let methods = instance["methods"];
+      let lifecycle = instance["lifecycle"];
+      let children = instance["children"] || tree["children"] || [];
+      let state = data.call({ props, children });
 
-      let props = {};
-      for (let k in tree) if (!special[k]) props[k] = tree[k];
+      function getCurrentContext() {
+        let ctx = {};
+        ctx["state"] = state;
+        ctx["props"] = props;
+        ctx["children"] = children;
+        ctx["setState"] = setState;
+        Object.assign(ctx, methods);
+        return ctx;
+      }
 
-      let args = {};
-      args["props"] = props;
-      args["children"] = children;
+      function setState(f, cb) {
+        let el = instance["bag"]["el"];
+        let past = bindComponent();
+        state = Object.assign(state, f(state));
+        let next = bindComponent();
+        patch(el, el, past, next, cb);
+      }
 
-      let rendered = f(args) || { tag: "template" }; // renderless default
-      rendered["lifecycle"] = {};
+      for (let key in methods) {
+        ((key, f) => (methods[key] = (...args) => f.call(getCurrentContext(), ...args)))(key, methods[key]);
+      }
 
-      return transform(rendered);
+      function bindComponent() {
+        for (let key in lifecycle) {
+          ((key, f) => (lifecycle[key] = el => f.call(getCurrentContext(), (instance["bag"]["el"] = el))))(
+            key,
+            lifecycle[key]
+          );
+        }
+        return transform(Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }));
+      }
+
+      return bindComponent();
     }
-
-    // top level component
-    if (tree["isComponent"]) {
-      return transform({ tag: tree });
-    }
-
-    let attr = {};
-    for (let k in tree) if (!special[k]) attr[k] = tree[k];
 
     // fix children
     let children = tree["children"] || [];
@@ -180,73 +200,12 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     let values = {};
     values["tag"] = tree["tag"] || "div";
     values["lifecycle"] = tree["lifecycle"] || {};
-    values["attr"] = attr;
+    values["attr"] = props || {};
     values["children"] = children.map(transform);
     return values;
-  }
+  };
 
-  function applyContext(tree, props, children) {
-    let n = (nextAppState[tree["counter"]] || []).length; // instance # of this component
-
-    if (!appState[tree["counter"]]) {
-      appState[tree["counter"]] = [];
-    }
-
-    if (!nextAppState[tree["counter"]]) {
-      nextAppState[tree["counter"]] = [];
-    }
-
-    // get current entry
-    let state = appState[tree["counter"]].shift();
-
-    if (!state) {
-      let initialCtx = {};
-      initialCtx["props"] = props;
-      initialCtx["children"] = children;
-      state = Object.assign(tree["data"].call(initialCtx));
-    }
-
-    nextAppState[tree["counter"]].push(state); // guess how long this took me
-
-    let bind = obj => {
-      for (let key in obj) {
-        let apply = (key, f) => {
-          obj[key] = (...args) => {
-            let ctx = tree["methods"];
-            ctx["state"] = state;
-            ctx["props"] = props;
-            ctx["children"] = children;
-            ctx["setState"] = setState;
-            return f.call(ctx, ...args);
-          };
-        };
-        apply(key, obj[key]);
-      }
-      return obj;
-    };
-
-    let setState = (f, cb) => {
-      let nextState = { ...state, ...f(state) };
-      nextAppState[tree["counter"]][n] = nextState;
-      appState = nextAppState;
-      nextAppState = [];
-
-      let ctx = tree["methods"];
-      ctx["state"] = nextState;
-      ctx["props"] = props;
-      ctx["children"] = children;
-      ctx["setState"] = setState;
-
-      scheduleRender(transform(rawTree), cb.bind({ ...ctx }));
-    };
-
-    let values = bind({ ...tree["methods"] }); // mangle
-    values["lifecycle"] = bind(tree["lifecycle"]);
-    values["state"] = state;
-    values["props"] = props;
-    values["children"] = children;
-    return values;
-  }
+  return scheduleRender(transform(rawTree), cb);
 
   function scheduleRender(tree, cb) {
     setTimeout(renderView, undefined, tree, cb); // meditate on this
@@ -258,7 +217,6 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   }
 };
 
-let uniqueCounter = 0;
 export let component = signature => {
   let data = signature["data"] || valueNoop; // mangled
   let mounted = signature["mounted"] || undefinedNoop;
@@ -277,12 +235,13 @@ export let component = signature => {
   lifecycle["updated"] = updated;
   lifecycle["destroyed"] = destroyed;
 
-  let values = {};
-  values["isComponent"] = true;
-  values["counter"] = uniqueCounter++;
-  values["lifecycle"] = lifecycle;
-  values["methods"] = signature;
-  values["data"] = data;
-  values["render"] = render;
-  return values;
+  return () => {
+    let values = {};
+    values["bag"] = {};
+    values["lifecycle"] = lifecycle;
+    values["methods"] = signature;
+    values["data"] = data;
+    values["render"] = render;
+    return values;
+  };
 };

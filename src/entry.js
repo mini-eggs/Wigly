@@ -1,5 +1,6 @@
 import { component, render } from "./wigly.js";
 
-window["wigly"] = {};
-window["wigly"]["component"] = component;
-window["wigly"]["render"] = render;
+let w = typeof module !== "undefined" ? module["exports"] : (window["wigly"] = {});
+
+w["component"] = component;
+w["render"] = render;
