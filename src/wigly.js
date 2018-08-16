@@ -59,6 +59,12 @@ let removeChildren = (element, old, tree) => {
 
 let updateElement = (el, old, tree) => {
   for (let key in { ...old["attr"], ...tree["attr"] }) {
+    // well fuck why are these the same in our vdom
+    // if (key === "class") {
+    //   console.log(old["attr"][key]);
+    //   console.log(tree["attr"][key]);
+    // }
+
     if (tree["attr"][key] !== old["attr"][key]) {
       createOrUpdateAttributes(el, key, tree["attr"][key], old["attr"][key]);
     }
@@ -82,7 +88,9 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
   } else {
     updateElement(element, oldTree, currTree);
 
-    if (typeof currTree === "string" || typeof currTree === "number") {
+    if (typeof oldTree === "string" && typeof currTree !== "string") {
+      patch(container, element, undefined, currTree, cb);
+    } else if (typeof currTree === "string" || typeof currTree === "number") {
       if (container.firstChild && !container.firstChild.nextSibling && container.firstChild.nodeType === 3) {
         container.firstChild.data = currTree;
       } else {
@@ -132,7 +140,39 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   let staleElement;
   let staleTree;
 
-  let transform = tree => {
+  let componentGrabBag = [];
+
+  // let shallowTransform = rendered => {
+  //   let tagOrFunc = rendered["tag"];
+  //   if (typeof tagOrFunc === "function") {
+  //     return { [__SHALLOW_UPDATE_NODE__]: true };
+  //   }
+
+  //   let children = rendered["children"] || [];
+  //   if (typeof children === "string") {
+  //     return children;
+  //   }
+
+  //   rendered["children"] = children.filter(item => item).map(shallowTransform);
+  //   return rendered;
+  // };
+
+  let findChildrenComponents = rendered => {
+    let tagOrFunc = rendered["tag"];
+    if (typeof tagOrFunc === "function") {
+      return rendered;
+    }
+
+    let children = rendered["children"] || [];
+    if (typeof children === "string") {
+      return [];
+    }
+
+    children = children.filter(item => item).map(findChildrenComponents);
+    return [].concat.apply([], children); // flat
+  };
+
+  let transform = (tree, instantiatedCallback) => {
     // end of tree
     let type = typeof tree;
     if (type === "string" || type === "number") {
@@ -156,39 +196,98 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       let children = instance["children"] || tree["children"] || [];
       let state = data.call({ props, children });
 
+      instance["bag"] = instance["bag"] || {};
+      instance["bag"]["props"] = props;
+      instance["bag"]["children"] = children;
+      instance["bag"]["state"] = state;
+
       function getCurrentContext() {
         let ctx = {};
-        ctx["state"] = state;
-        ctx["props"] = props;
-        ctx["children"] = children;
+        ctx["state"] = instance["bag"]["state"];
+        ctx["props"] = instance["bag"]["props"];
+        ctx["children"] = instance["bag"]["children"];
         ctx["setState"] = setState;
         Object.assign(ctx, methods);
         return ctx;
       }
 
-      function setState(f, cb) {
+      /**
+       * Do NOT look ahead, this is full of broken test code.
+       */
+      function setState(f, cb, testing) {
         let el = instance["bag"]["el"];
-        let past = bindComponent();
-        state = Object.assign(state, f(state));
-        let next = bindComponent();
-        patch(el, el, past, next, cb);
+        let pastChildren = bindComponent(findChildrenComponents);
+        let current = instance["bag"]["state"];
+        let next = Object.assign(current, f(current));
+        Object.assign(instance["bag"]["state"], next);
+        let nextChildren = bindComponent(findChildrenComponents);
+        let nextDeep = bindComponent(transform);
+
+        if (testing) {
+          patch(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextDeep), cb);
+          return;
+        }
+
+        if (!instance["bag"]["componentInstanceChildren"]) {
+          patch(el, el, instance["bag"]["lastVDOM"], nextDeep, cb);
+        } else {
+          // holy shit no way we are actually doing this
+          // time for another rewrite
+          for (let past of pastChildren) {
+            for (let next of nextChildren) {
+              for (let bagged of instance["bag"]["componentInstanceChildren"]) {
+                let x = next["tag"];
+                let y = past["tag"];
+                let z = bagged["bag"]["spec"]["tag"];
+                if (x === y && y === z && z === x) {
+                  Object.assign(bagged["bag"]["props"], next["props"]);
+                  Object.assign(bagged["bag"]["children"], next["children"]);
+                  bagged["bag"]["spec"]["setState"](valueNoop, nullNoop, true);
+                }
+              }
+            }
+          }
+        }
       }
 
       for (let key in methods) {
         ((key, f) => (methods[key] = (...args) => f.call(getCurrentContext(), ...args)))(key, methods[key]);
       }
 
-      function bindComponent() {
+      function bindComponent(transformer) {
         for (let key in lifecycle) {
-          ((key, f) => (lifecycle[key] = el => f.call(getCurrentContext(), (instance["bag"]["el"] = el))))(
-            key,
-            lifecycle[key]
-          );
+          ((key, f) =>
+            (lifecycle[key] = el => {
+              if (key === "mounted") {
+                componentGrabBag.push(instance);
+                instance["bag"]["spec"] = tree;
+                instantiatedCallback && instantiatedCallback(instance);
+              }
+
+              f.call(getCurrentContext(), (instance["bag"]["el"] = el));
+            }))(key, lifecycle[key]);
         }
-        return transform(Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }));
+
+        return transformer(
+          Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }),
+          childInstantiateCallback
+        );
       }
 
-      return bindComponent();
+      function childInstantiateCallback(that) {
+        if (that["bag"]) {
+          // is a component instance
+          if (!instance["bag"]["componentInstanceChildren"]) {
+            instance["bag"]["componentInstanceChildren"] = [];
+          }
+
+          instance["bag"]["componentInstanceChildren"].push(that);
+        }
+      }
+
+      let vdom = bindComponent(transform);
+      instance["bag"]["lastVDOM"] = vdom;
+      return vdom;
     }
 
     // fix children
@@ -201,7 +300,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     values["tag"] = tree["tag"] || "div";
     values["lifecycle"] = tree["lifecycle"] || {};
     values["attr"] = props || {};
-    values["children"] = children.map(transform);
+    values["children"] = children.map(child => transform(child, instantiatedCallback));
     return values;
   };
 
