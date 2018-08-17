@@ -59,12 +59,6 @@ let removeChildren = (element, old, tree) => {
 
 let updateElement = (el, old, tree) => {
   for (let key in { ...old["attr"], ...tree["attr"] }) {
-    // well fuck why are these the same in our vdom
-    // if (key === "class") {
-    //   console.log(old["attr"][key]);
-    //   console.log(tree["attr"][key]);
-    // }
-
     if (tree["attr"][key] !== old["attr"][key]) {
       createOrUpdateAttributes(el, key, tree["attr"][key], old["attr"][key]);
     }
@@ -75,7 +69,7 @@ let updateElement = (el, old, tree) => {
 };
 
 let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
-  if (oldTree === currTree) {
+  if (oldTree === currTree || currTree["shallowPlaceholder"]) {
   } else if (!oldTree || oldTree.tag !== currTree.tag) {
     let nextElement = createElement(currTree);
     container.insertBefore(nextElement, element);
@@ -140,8 +134,6 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   let staleElement;
   let staleTree;
 
-  let componentGrabBag = [];
-
   // let shallowTransform = rendered => {
   //   let tagOrFunc = rendered["tag"];
   //   if (typeof tagOrFunc === "function") {
@@ -172,7 +164,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     return [].concat.apply([], children); // flat
   };
 
-  let transform = (tree, instantiatedCallback) => {
+  let transform = (tree, instantiatedCallback, shallow) => {
     // end of tree
     let type = typeof tree;
     if (type === "string" || type === "number") {
@@ -186,6 +178,15 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       }
     }
 
+    if (typeof tree["tag"] === "function" && shallow) {
+      return {
+        ["shallowPlaceholder"]: true,
+        ["props"]: props,
+        ["children"]: tree["children"],
+        ["tag"]: tree["tag"]
+      };
+    }
+
     // component
     if (typeof tree["tag"] === "function") {
       let instance = tree["tag"]();
@@ -196,17 +197,12 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       let children = instance["children"] || tree["children"] || [];
       let state = data.call({ props, children });
 
-      instance["bag"] = instance["bag"] || {};
-      instance["bag"]["props"] = props;
-      instance["bag"]["children"] = children;
-      instance["bag"]["state"] = state;
-
       function getCurrentContext() {
         let ctx = {};
         ctx["state"] = instance["bag"]["state"];
         ctx["props"] = instance["bag"]["props"];
         ctx["children"] = instance["bag"]["children"];
-        ctx["setState"] = setState;
+        ctx["setState"] = instance["bag"]["setState"];
         Object.assign(ctx, methods);
         return ctx;
       }
@@ -214,7 +210,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       /**
        * Do NOT look ahead, this is full of broken test code.
        */
-      function setState(f, cb, testing) {
+      function setState(f, cb) {
         let el = instance["bag"]["el"];
         let pastChildren = bindComponent(findChildrenComponents);
         let current = instance["bag"]["state"];
@@ -222,67 +218,77 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
         Object.assign(instance["bag"]["state"], next);
         let nextChildren = bindComponent(findChildrenComponents);
         let nextDeep = bindComponent(transform);
+        let nextShallow = bindComponent(transform, true);
 
-        if (testing) {
+        if (instance["bag"]["componentInstanceChildren"].length < 1) {
+          // no children to be concerned about, render it all.
           patch(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextDeep), cb);
-          return;
-        }
-
-        if (!instance["bag"]["componentInstanceChildren"]) {
-          patch(el, el, instance["bag"]["lastVDOM"], nextDeep, cb);
         } else {
-          // holy shit no way we are actually doing this
-          // time for another rewrite
-          for (let past of pastChildren) {
-            for (let next of nextChildren) {
-              for (let bagged of instance["bag"]["componentInstanceChildren"]) {
-                let x = next["tag"];
-                let y = past["tag"];
-                let z = bagged["bag"]["spec"]["tag"];
-                if (x === y && y === z && z === x) {
-                  Object.assign(bagged["bag"]["props"], next["props"]);
-                  Object.assign(bagged["bag"]["children"], next["children"]);
-                  bagged["bag"]["spec"]["setState"](valueNoop, nullNoop, true);
+          patch(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextShallow));
+
+          // TODO ACCOUNT FOR COMPONENTS ENTERING AND LEAVING DOM
+
+          function callSetStateOnChildren(tree) {
+            let children = tree["children"];
+            for (let child of children) {
+              if (child["shallowPlaceholder"]) {
+                for (let bagged of instance["bag"]["componentInstanceChildren"]) {
+                  let x = bagged["bag"]["spec"]["tag"];
+                  let y = child["tag"];
+                  if (x === y) {
+                    Object.assign(bagged["bag"]["props"], child["props"]);
+                    Object.assign(bagged["bag"]["children"], child["children"]);
+                    bagged["bag"]["setState"](valueNoop, undefinedNoop);
+                  }
                 }
+
+                continue;
               }
+
+              callSetStateOnChildren(child);
             }
           }
+
+          callSetStateOnChildren(nextShallow);
+          cb && cb();
         }
       }
+
+      instance["bag"] = instance["bag"] || {};
+      instance["bag"]["props"] = props;
+      instance["bag"]["children"] = children;
+      instance["bag"]["state"] = state;
+      instance["bag"]["setState"] = setState;
+      instance["bag"]["componentInstanceChildren"] = [];
 
       for (let key in methods) {
         ((key, f) => (methods[key] = (...args) => f.call(getCurrentContext(), ...args)))(key, methods[key]);
       }
 
-      function bindComponent(transformer) {
-        for (let key in lifecycle) {
-          ((key, f) =>
-            (lifecycle[key] = el => {
-              if (key === "mounted") {
-                componentGrabBag.push(instance);
-                instance["bag"]["spec"] = tree;
-                instantiatedCallback && instantiatedCallback(instance);
-              }
+      for (let key in lifecycle) {
+        ((key, f) =>
+          (lifecycle[key] = el => {
+            instance["bag"]["el"] = el;
 
-              f.call(getCurrentContext(), (instance["bag"]["el"] = el));
-            }))(key, lifecycle[key]);
-        }
+            if (key === "mounted") {
+              instance["bag"]["spec"] = tree;
+              instantiatedCallback && instantiatedCallback(instance);
+            }
 
+            f.call(getCurrentContext(), el);
+          }))(key, lifecycle[key]);
+      }
+
+      function bindComponent(transformer, shallow = false) {
         return transformer(
           Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }),
-          childInstantiateCallback
+          childInstantiateCallback,
+          shallow
         );
       }
 
       function childInstantiateCallback(that) {
-        if (that["bag"]) {
-          // is a component instance
-          if (!instance["bag"]["componentInstanceChildren"]) {
-            instance["bag"]["componentInstanceChildren"] = [];
-          }
-
-          instance["bag"]["componentInstanceChildren"].push(that);
-        }
+        instance["bag"]["componentInstanceChildren"].push(that);
       }
 
       let vdom = bindComponent(transform);
@@ -300,7 +306,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     values["tag"] = tree["tag"] || "div";
     values["lifecycle"] = tree["lifecycle"] || {};
     values["attr"] = props || {};
-    values["children"] = children.map(child => transform(child, instantiatedCallback));
+    values["children"] = children.map(child => transform(child, instantiatedCallback, shallow));
     return values;
   };
 
