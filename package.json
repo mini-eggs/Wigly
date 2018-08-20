@@ -1,13 +1,16 @@
 {
   "name": "wigly",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "main": "dist/es5.js",
   "scripts": {
     "start": "npm run es5 && npm run es6",
     "es5": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
-    "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'"
+    "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
+    "test": "ava"
   },
   "devDependencies": {
+    "ava": "1.0.0-beta.7",
+    "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "latest"
   }
 }

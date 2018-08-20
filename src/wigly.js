@@ -124,7 +124,7 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
   return element;
 };
 
-export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop) => {
+export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch) => {
   let special = {};
   special["tag"] = true;
   special["bag"] = true;
@@ -169,6 +169,11 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
       return tree;
     }
 
+    // top level component
+    if (type === "function") {
+      return transform({ tag: tree }, instantiatedCallback, shallow);
+    }
+
     let props = {}; // or attr
     for (let k in tree) {
       if (!special[k]) {
@@ -187,7 +192,7 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
 
     // component
     if (typeof tree["tag"] === "function") {
-      let instance = tree["tag"]();
+      let instance = tree["tag"]({ ["props"]: props }); // weird but quick fix for functional components
       let data = instance["data"] || valueNoop;
       let render = instance["render"] || (() => instance); // weird but quick fix for functional components
       let methods = instance["methods"];
@@ -214,7 +219,7 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
         let current = instance["bag"]["state"];
         let next = Object.assign(current, f(current));
         Object.assign(instance["bag"]["state"], next);
-        let nextChildren = bindComponent(findChildrenComponents);
+        // let nextChildren = bindComponent(findChildrenComponents);
         let nextDeep = bindComponent(transform);
         let nextShallow = bindComponent(transform, true);
 
@@ -246,6 +251,7 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
               children: (curr.children || []).map(merger)
             };
           }
+
           nextShallow = merger(nextShallow);
         };
 
@@ -261,7 +267,6 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
                 if (x === y) {
                   Object.assign(bagged["bag"]["props"], child["props"]);
                   Object.assign(bagged["bag"]["children"], child["children"]);
-
                   bagged["bag"]["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
                 }
               }
@@ -301,9 +306,6 @@ export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop
             }
 
             if (key === "destroyed") {
-              // instance["bag"]["el"] = undefined;
-              // instance["bag"]["lastVDOM"] = undefined;
-              // instance["bag"]["componentInstanceChildren"] = [];
               instantiatedCallback && instantiatedCallback(instance, false);
             }
 
