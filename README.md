@@ -111,3 +111,22 @@ let LifecycleExample = component({
 
 render(LifecycleExample, document.body);
 ```
+
+Using JSX:
+
+```javascript
+/** @jsx h */
+import { component, render } from "wigly";
+
+// There are no current plans to export this in wigly.
+// You will also need an adequate babel setup.
+let h = (tag, attr, ...children) => ({ tag, ...attr, children });
+
+let JSXExample = component({
+  render() {
+    return <div>It's the best bastardization of React and Vue, huh?</div>;
+  }
+});
+
+render(JSXExample, document.body);
+```
