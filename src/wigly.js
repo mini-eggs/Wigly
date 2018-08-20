@@ -244,9 +244,9 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
               for (let bagged of instance["bag"]["componentInstanceChildren"]) {
                 if (child["tag"] === bagged["bag"]["spec"]["tag"] && child["key"] === bagged["bag"]["spec"]["key"]) {
                   Object.assign(bagged["bag"]["props"], child["props"]);
-                  if (typeof bagged["bag"]["children"] !== "string") {
-                    Object.assign(bagged["bag"]["children"], child["children"]);
-                  }
+                  // Object.assign(bagged["bag"]["children"], child["children"]); // doesnt work for string children
+                  delete bagged["bag"]["children"];
+                  bagged["bag"]["children"] = child["children"];
                   bagged["bag"]["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
                 }
               }

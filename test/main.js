@@ -78,7 +78,36 @@ test("Composed components with props.", async t => {
 });
 
 test("Composed components with children.", async t => {
-  throw new Error("TODO");
+  let parentCtx;
+
+  let child = component({
+    render() {
+      return { children: `Current Count: ${this.props.count}` };
+    }
+  });
+
+  let parent = component({
+    data() {
+      return { count: 0 };
+    },
+    render() {
+      parentCtx = this;
+      return {
+        children: [{ tag: child, count: this.state.count }]
+      };
+    }
+  });
+
+  let el = await asyncRender(parent);
+  await new Promise(resolve => parentCtx.setState(({ count }) => ({ count: count + 1 }), resolve));
+  t.deepEqual(el.textContent, "Current Count: 1");
+
+  await Promise.all([
+    new Promise(resolve => parentCtx.setState(({ count }) => ({ count: count + 1 }), resolve)),
+    new Promise(resolve => parentCtx.setState(({ count }) => ({ count: count + 1 }), resolve)),
+    new Promise(resolve => parentCtx.setState(({ count }) => ({ count: count + 1 }), resolve))
+  ]);
+  t.deepEqual(el.textContent, "Current Count: 4");
 });
 
 test("Updating components works as expected.", async t => {
@@ -131,13 +160,8 @@ test("String children are updated as expected.", async t => {
   });
 
   let el = await asyncRender(Parent);
-
   t.deepEqual(el.textContent, "Children here: Hello, World!");
-
-  await new Promise(resolve => {
-    parentCtx.setState(() => ({ children: "This is a triumph." }), resolve);
-  });
-
+  await new Promise(resolve => parentCtx.setState(() => ({ children: "This is a triumph." }), resolve));
   t.deepEqual(el.textContent, "Children here: This is a triumph.");
 });
 
@@ -164,5 +188,16 @@ test("Composed functional components with props.", async t => {
 });
 
 test("Composed functional components with children.", async t => {
-  throw new Error("TODO");
+  let currentCount = 0;
+
+  let child = ({ props }) => ({ children: `Current Count: ${props.count}` });
+  let parent = () => ({ children: [{ tag: child, count: currentCount }] });
+
+  let el = await asyncRender(parent);
+  t.deepEqual(el.textContent, "Current Count: 0");
+
+  currentCount += 3;
+
+  el = await asyncRender(parent);
+  t.deepEqual(el.textContent, "Current Count: 3");
 });
