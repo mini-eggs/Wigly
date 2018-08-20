@@ -2,6 +2,11 @@ let valueNoop = () => ({});
 let nullNoop = () => null;
 let undefinedNoop = () => {};
 
+let unique = () =>
+  Math.random()
+    .toString(36)
+    .substr(2, 9);
+
 let createElement = tree => {
   let isSimple = typeof tree === "string" || typeof tree === "number";
   let el = isSimple ? document.createTextNode(tree) : document.createElement(tree["tag"]);
@@ -59,7 +64,7 @@ let removeChildren = (element, old, tree) => {
 
 let updateElement = (el, old, tree) => {
   for (let key in { ...old["attr"], ...tree["attr"] }) {
-    if (tree["attr"][key] !== old["attr"][key]) {
+    if (tree["attr"][key] || tree["attr"][key] !== old["attr"][key]) {
       createOrUpdateAttributes(el, key, tree["attr"][key], old["attr"][key]);
     }
   }
@@ -70,11 +75,11 @@ let updateElement = (el, old, tree) => {
 
 let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
   if (oldTree === currTree || currTree["shallowPlaceholder"]) {
-  } else if (!oldTree || oldTree.tag !== currTree.tag) {
+  } else if (!element || !oldTree || oldTree.tag !== currTree.tag) {
     let nextElement = createElement(currTree);
     container.insertBefore(nextElement, element);
 
-    if (oldTree) {
+    if (element && oldTree) {
       removeElement(container, element, oldTree, currTree);
     }
 
@@ -115,12 +120,14 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
     }
   }
 
-  return cb() || element;
+  cb();
+  return element;
 };
 
-export let render = (rawTree, renderElement, cb = undefinedNoop) => {
+export let render = (rawTree, renderElement, patcher = patch, cb = undefinedNoop) => {
   let special = {};
   special["tag"] = true;
+  special["bag"] = true;
   special["lifecycle"] = true;
   special["children"] = true;
 
@@ -131,23 +138,14 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   methodRules["destroyed"] = true;
   methodRules["render"] = true;
 
+  let defaultLifecycle = {
+    ["mounted"]: undefinedNoop,
+    ["updated"]: undefinedNoop,
+    ["destroyed"]: undefinedNoop
+  };
+
   let staleElement;
   let staleTree;
-
-  // let shallowTransform = rendered => {
-  //   let tagOrFunc = rendered["tag"];
-  //   if (typeof tagOrFunc === "function") {
-  //     return { [__SHALLOW_UPDATE_NODE__]: true };
-  //   }
-
-  //   let children = rendered["children"] || [];
-  //   if (typeof children === "string") {
-  //     return children;
-  //   }
-
-  //   rendered["children"] = children.filter(item => item).map(shallowTransform);
-  //   return rendered;
-  // };
 
   let findChildrenComponents = rendered => {
     let tagOrFunc = rendered["tag"];
@@ -164,7 +162,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
     return [].concat.apply([], children); // flat
   };
 
-  let transform = (tree, instantiatedCallback, shallow) => {
+  let transform = (tree, instantiatedCallback = undefinedNoop, shallow = false) => {
     // end of tree
     let type = typeof tree;
     if (type === "string" || type === "number") {
@@ -193,7 +191,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       let data = instance["data"] || valueNoop;
       let render = instance["render"] || (() => instance); // weird but quick fix for functional components
       let methods = instance["methods"];
-      let lifecycle = instance["lifecycle"];
+      let lifecycle = { ...defaultLifecycle, ...(instance["lifecycle"] || {}) };
       let children = instance["children"] || tree["children"] || [];
       let state = data.call({ props, children });
 
@@ -212,7 +210,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
        */
       function setState(f, cb) {
         let el = instance["bag"]["el"];
-        let pastChildren = bindComponent(findChildrenComponents);
+        // let pastChildren = bindComponent(findChildrenComponents);
         let current = instance["bag"]["state"];
         let next = Object.assign(current, f(current));
         Object.assign(instance["bag"]["state"], next);
@@ -222,36 +220,62 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
 
         if (instance["bag"]["componentInstanceChildren"].length < 1) {
           // no children to be concerned about, render it all.
-          patch(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextDeep), cb);
-        } else {
-          patch(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextShallow));
+          patcher(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextDeep), () => {
+            cb && cb(nextDeep);
+          });
+          return;
+        }
 
-          // TODO ACCOUNT FOR COMPONENTS ENTERING AND LEAVING DOM
+        el = patcher(el, el, instance["bag"]["lastVDOM"], nextShallow);
 
-          function callSetStateOnChildren(tree) {
-            let children = tree["children"];
-            for (let child of children) {
-              if (child["shallowPlaceholder"]) {
-                for (let bagged of instance["bag"]["componentInstanceChildren"]) {
-                  let x = bagged["bag"]["spec"]["tag"];
-                  let y = child["tag"];
-                  if (x === y) {
-                    Object.assign(bagged["bag"]["props"], child["props"]);
-                    Object.assign(bagged["bag"]["children"], child["children"]);
-                    bagged["bag"]["setState"](valueNoop, undefinedNoop);
-                  }
+        // TODO ACCOUNT FOR COMPONENTS ENTERING AND LEAVING DOM
+        // DO WE STILL NEED TO DO THIS?
+
+        // DONE
+        // TODO BUILD THE CORRECT NEXTTREE (DEEP) SO WE NEVER PASS PLACEHOLDERS INTO
+        //      PAST TREES
+
+        let mergeChildIntoShallowTree = child => tree => {
+          function merger(curr) {
+            if (curr["tag"] === child["bag"]["spec"]["tag"]) {
+              return tree;
+            }
+
+            return {
+              ...curr,
+              children: (curr.children || []).map(merger)
+            };
+          }
+          nextShallow = merger(nextShallow);
+        };
+
+        function callSetStateOnChildren(tree) {
+          let children = tree["children"] || [];
+
+          for (let child of children) {
+            if (child["shallowPlaceholder"]) {
+              for (let bagged of instance["bag"]["componentInstanceChildren"]) {
+                let x = bagged["bag"]["spec"]["tag"];
+                let y = child["tag"];
+
+                if (x === y) {
+                  Object.assign(bagged["bag"]["props"], child["props"]);
+                  Object.assign(bagged["bag"]["children"], child["children"]);
+
+                  bagged["bag"]["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
                 }
-
-                continue;
               }
 
-              callSetStateOnChildren(child);
+              continue;
             }
-          }
 
-          callSetStateOnChildren(nextShallow);
-          cb && cb();
+            callSetStateOnChildren(child);
+          }
         }
+
+        callSetStateOnChildren(nextShallow);
+        instance["bag"]["lastVDOM"] = nextShallow;
+        cb && cb(nextShallow);
       }
 
       instance["bag"] = instance["bag"] || {};
@@ -272,7 +296,15 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
 
             if (key === "mounted") {
               instance["bag"]["spec"] = tree;
+              instance["bag"]["uniqueID"] = unique();
               instantiatedCallback && instantiatedCallback(instance);
+            }
+
+            if (key === "destroyed") {
+              // instance["bag"]["el"] = undefined;
+              // instance["bag"]["lastVDOM"] = undefined;
+              // instance["bag"]["componentInstanceChildren"] = [];
+              instantiatedCallback && instantiatedCallback(instance, false);
             }
 
             f.call(getCurrentContext(), el);
@@ -282,18 +314,23 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
       function bindComponent(transformer, shallow = false) {
         return transformer(
           Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }),
-          childInstantiateCallback,
+          domUpdateHook,
           shallow
         );
       }
 
-      function childInstantiateCallback(that) {
-        instance["bag"]["componentInstanceChildren"].push(that);
+      function domUpdateHook(that, isEnteringDom = true) {
+        if (isEnteringDom) {
+          instance["bag"]["componentInstanceChildren"].push(that);
+          return;
+        }
+
+        instance["bag"]["componentInstanceChildren"] = instance["bag"]["componentInstanceChildren"].filter(
+          item => that["bag"]["uniqueID"] !== item["bag"]["uniqueID"]
+        );
       }
 
-      let vdom = bindComponent(transform);
-      instance["bag"]["lastVDOM"] = vdom;
-      return vdom;
+      return (instance["bag"]["lastVDOM"] = bindComponent(transform));
     }
 
     // fix children
@@ -317,7 +354,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop) => {
   }
 
   function renderView(tree, cb) {
-    staleElement = patch(renderElement, staleElement, staleTree, tree, cb);
+    staleElement = patcher(renderElement, staleElement, staleTree, tree, cb);
     staleTree = tree;
   }
 };
