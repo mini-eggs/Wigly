@@ -111,6 +111,36 @@ test("Updating components works as expected.", async t => {
   t.deepEqual(el.textContent, "You're name is Robby.");
 });
 
+test("String children are updated as expected.", async t => {
+  let parentCtx;
+
+  let Child = component({
+    render() {
+      return { children: `Children here: ${this.children}` };
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return { children: "Hello, World!" };
+    },
+    render() {
+      parentCtx = this;
+      return { children: [{ tag: Child, children: this.state.children }] };
+    }
+  });
+
+  let el = await asyncRender(Parent);
+
+  t.deepEqual(el.textContent, "Children here: Hello, World!");
+
+  await new Promise(resolve => {
+    parentCtx.setState(() => ({ children: "This is a triumph." }), resolve);
+  });
+
+  t.deepEqual(el.textContent, "Children here: This is a triumph.");
+});
+
 // Functional components
 
 test("'Hello, World' functional component.", async t => {

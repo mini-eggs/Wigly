@@ -125,18 +125,13 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
 };
 
 export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch) => {
-  let special = {};
-  special["tag"] = true;
-  special["bag"] = true;
-  special["lifecycle"] = true;
-  special["children"] = true;
-
-  let methodRules = {};
-  methodRules["data"] = true;
-  methodRules["mounted"] = true;
-  methodRules["updated"] = true;
-  methodRules["destroyed"] = true;
-  methodRules["render"] = true;
+  let special = {
+    ["tag"]: true,
+    ["bag"]: true,
+    ["key"]: true,
+    ["lifecycle"]: true,
+    ["children"]: true
+  };
 
   let defaultLifecycle = {
     ["mounted"]: undefinedNoop,
@@ -146,21 +141,6 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
 
   let staleElement;
   let staleTree;
-
-  let findChildrenComponents = rendered => {
-    let tagOrFunc = rendered["tag"];
-    if (typeof tagOrFunc === "function") {
-      return rendered;
-    }
-
-    let children = rendered["children"] || [];
-    if (typeof children === "string") {
-      return [];
-    }
-
-    children = children.filter(item => item).map(findChildrenComponents);
-    return [].concat.apply([], children); // flat
-  };
 
   let transform = (tree, instantiatedCallback = undefinedNoop, shallow = false) => {
     // end of tree
@@ -174,19 +154,22 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
       return transform({ tag: tree }, instantiatedCallback, shallow);
     }
 
-    let props = {}; // or attr
+    // collect attr and props
+    let props = {};
     for (let k in tree) {
       if (!special[k]) {
         props[k] = tree[k];
       }
     }
 
+    // helper for making patching dom better + setStating
     if (typeof tree["tag"] === "function" && shallow) {
       return {
         ["shallowPlaceholder"]: true,
         ["props"]: props,
         ["children"]: tree["children"],
-        ["tag"]: tree["tag"]
+        ["tag"]: tree["tag"],
+        ["key"]: tree["key"]
       };
     }
 
@@ -201,25 +184,23 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
       let state = data.call({ props, children });
 
       function getCurrentContext() {
-        let ctx = {};
-        ctx["state"] = instance["bag"]["state"];
-        ctx["props"] = instance["bag"]["props"];
-        ctx["children"] = instance["bag"]["children"];
-        ctx["setState"] = instance["bag"]["setState"];
-        Object.assign(ctx, methods);
-        return ctx;
+        return {
+          ["state"]: instance["bag"]["state"],
+          ["props"]: instance["bag"]["props"],
+          ["children"]: instance["bag"]["children"],
+          ["setState"]: instance["bag"]["setState"],
+          ...methods
+        };
       }
 
       /**
-       * Do NOT look ahead, this is full of broken test code.
+       * TODO please clean this.
        */
       function setState(f, cb) {
         let el = instance["bag"]["el"];
-        // let pastChildren = bindComponent(findChildrenComponents);
         let current = instance["bag"]["state"];
         let next = Object.assign(current, f(current));
         Object.assign(instance["bag"]["state"], next);
-        // let nextChildren = bindComponent(findChildrenComponents);
         let nextDeep = bindComponent(transform);
         let nextShallow = bindComponent(transform, true);
 
@@ -231,7 +212,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
           return;
         }
 
-        el = patcher(el, el, instance["bag"]["lastVDOM"], nextShallow);
+        patcher(el, el, instance["bag"]["lastVDOM"], nextShallow);
 
         // TODO ACCOUNT FOR COMPONENTS ENTERING AND LEAVING DOM
         // DO WE STILL NEED TO DO THIS?
@@ -242,13 +223,13 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
 
         let mergeChildIntoShallowTree = child => tree => {
           function merger(curr) {
-            if (curr["tag"] === child["bag"]["spec"]["tag"]) {
+            if (curr["tag"] === child["bag"]["spec"]["tag"] && curr["key"] === child["bag"]["spec"]["key"]) {
               return tree;
             }
 
             return {
               ...curr,
-              children: (curr.children || []).map(merger)
+              children: typeof curr.children === "string" ? curr.children : (curr.children || []).map(merger)
             };
           }
 
@@ -261,12 +242,11 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
           for (let child of children) {
             if (child["shallowPlaceholder"]) {
               for (let bagged of instance["bag"]["componentInstanceChildren"]) {
-                let x = bagged["bag"]["spec"]["tag"];
-                let y = child["tag"];
-
-                if (x === y) {
+                if (child["tag"] === bagged["bag"]["spec"]["tag"] && child["key"] === bagged["bag"]["spec"]["key"]) {
                   Object.assign(bagged["bag"]["props"], child["props"]);
-                  Object.assign(bagged["bag"]["children"], child["children"]);
+                  if (typeof bagged["bag"]["children"] !== "string") {
+                    Object.assign(bagged["bag"]["children"], child["children"]);
+                  }
                   bagged["bag"]["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
                 }
               }
@@ -279,8 +259,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
         }
 
         callSetStateOnChildren(nextShallow);
-        instance["bag"]["lastVDOM"] = nextShallow;
-        cb && cb(nextShallow);
+        cb && cb((instance["bag"]["lastVDOM"] = nextShallow));
       }
 
       instance["bag"] = instance["bag"] || {};
@@ -341,12 +320,13 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
       children = [children];
     }
 
-    let values = {};
-    values["tag"] = tree["tag"] || "div";
-    values["lifecycle"] = tree["lifecycle"] || {};
-    values["attr"] = props || {};
-    values["children"] = children.map(child => transform(child, instantiatedCallback, shallow));
-    return values;
+    return {
+      ["tag"]: tree["tag"] || "div",
+      ["key"]: tree["key"],
+      ["lifecycle"]: tree["lifecycle"] || {},
+      ["attr"]: props || {},
+      ["children"]: children.map(child => transform(child, instantiatedCallback, shallow))
+    };
   };
 
   return scheduleRender(transform(rawTree), cb);
@@ -374,18 +354,17 @@ export let component = signature => {
   delete signature["destroyed"];
   delete signature["render"];
 
-  let lifecycle = {};
-  lifecycle["mounted"] = mounted;
-  lifecycle["updated"] = updated;
-  lifecycle["destroyed"] = destroyed;
-
-  return () => {
-    let values = {};
-    values["bag"] = {};
-    values["lifecycle"] = lifecycle;
-    values["methods"] = signature;
-    values["data"] = data;
-    values["render"] = render;
-    return values;
+  let lifecycle = {
+    ["mounted"]: mounted,
+    ["updated"]: updated,
+    ["destroyed"]: destroyed
   };
+
+  return () => ({
+    ["bag"]: {},
+    ["lifecycle"]: lifecycle,
+    ["methods"]: signature,
+    ["data"]: data,
+    ["render"]: render
+  });
 };
