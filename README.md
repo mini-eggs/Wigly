@@ -19,15 +19,9 @@ It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from 
 Using ECMAScript 5:
 
 ```html
-<script src="https://unpkg.com/wigly@0.0.21/dist/es5.js"></script>
+<script src="https://unpkg.com/wigly@0.0.22/dist/es5.js"></script>
 <script>
-    var component = function () {
-        return { children: "Hello, World!" }
-    }
-
-    window.onload = function (event) {
-        wigly.render(component, event.target.body)
-    }
+    wigly.render("This is a triumph.", document.body)
 </script>
 ```
 
@@ -36,9 +30,7 @@ Using modern JavaScript:
 ```javascript
 import { render } from "wigly";
 
-let app = () => ({ children: "Hello, World!" });
-
-window.onload = event => render(app, event.target.body);
+render("This is a triumph.", document.body);
 ```
 
 Using components:
@@ -63,7 +55,7 @@ let MyCoolInput = component({
   }
 });
 
-let app = component({
+let App = component({
   data() {
     // setting initial state.
     return { title: "Please enter your name.", name: "" };
@@ -91,11 +83,7 @@ let app = component({
   }
 });
 
-function main() {
-  render(app, document.body);
-}
-
-window.onload = main;
+render(App, document.body);
 ```
 
 Using lifecycles:
@@ -121,15 +109,5 @@ let LifecycleExample = component({
   }
 });
 
-let app = component({
-  render() {
-    return { tag: LifecycleExample };
-  }
-});
-
-function main() {
-  render(app, document.body);
-}
-
-window.onload = main;
+render(LifecycleExample, document.body);
 ```
