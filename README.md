@@ -124,7 +124,7 @@ let h = (tag, attr, ...children) => ({ tag, ...attr, children });
 
 let JSXExample = component({
   render() {
-    return <div>It's the best bastardization of React and Vue, huh?</div>;
+    return <div>It is the best bastardization of React and Vue, huh?</div>;
   }
 });
 
