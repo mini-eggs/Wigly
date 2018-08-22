@@ -189,11 +189,16 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
     if (typeof tree["tag"] === "function") {
       let instance = tree["tag"]({ ["props"]: props }); // weird but quick fix for functional components
       let data = instance["data"] || valueNoop;
-      let render = instance["render"] || (() => instance); // weird but quick fix for functional components
+      let render = instance["render"];
       let methods = instance["methods"];
       let lifecycle = { ...defaultLifecycle, ...(instance["lifecycle"] || {}) };
       let children = instance["children"] || tree["children"] || [];
       let state = data.call({ props, children });
+
+      if(!instance["render"]) {
+        let copy = {...instance}
+        render = () => copy  // weird but quick fix for functional components coming in and out of dom.
+      }
 
       function getCurrentContext() {
         return {
@@ -228,6 +233,7 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
 
         let mergeChildIntoShallowTree = child => tree => {
           function merger(curr) {
+
             if (curr["tag"] === child["spec"]["tag"] && curr["key"] === child["spec"]["key"]) {
               return tree;
             }

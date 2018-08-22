@@ -376,3 +376,87 @@ test("Lifecycles work as expected part 3.", async t => {
 
   t.deepEqual(lifecycles, ["mounted", "updated", "destroyed"]);
 });
+
+test("Children spread correctly part 1",async t=> {
+  let child = component({
+    render() {
+      return {
+        children: [
+          {children: "testing 1"},
+          ...this.children
+        ]
+      }
+    }
+  })
+
+  let parent = component({
+    render() {
+      return {
+        tag: child,
+        children: [
+          { children: "testing 2" },
+          { children: "testing 3" }
+        ]
+      }
+    }
+  })
+
+  let el = await asyncRender(parent);
+
+  t.deepEqual(el.textContent, ["testing 1","testing 2", "testing 3"].join(''));
+})
+
+test("Children spread correctly part 2",async t=> {
+  let rootCtx;
+  let parentCtx;
+
+  let mixin = {
+    data() {
+      return { display: false } 
+    }
+  }
+
+  let text = () => ({
+    children: "is a triumph"
+  })
+
+  let child = component({
+    ...mixin,
+    render() {
+      parentCtx = this;
+      return {
+        children: [
+          {children: "this "},
+          ...this.children
+        ]
+      }
+    }
+  })
+
+  let intermediate = component({
+    render() {
+      return {
+        tag: child,
+        children: this.children
+      }
+    }
+  })
+
+  let parent = component({
+    ...mixin,
+    render() {
+      rootCtx = this;
+      return {
+        tag: intermediate,
+        children: [text]
+      }
+    }
+  })
+
+  let el = await asyncRender(parent);
+
+  await new Promise(resolve => rootCtx.setState(() => ({ display: true }), resolve));
+  await new Promise(resolve => parentCtx.setState(() => ({ display: true }), resolve));
+
+  t.deepEqual(el.textContent, "this is a triumph");
+});
