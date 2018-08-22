@@ -87,6 +87,18 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
   } else {
     updateElement(element, oldTree, currTree);
 
+    // determine if we're switching out a root component
+    // for standard vdom, if so lets call destroyed.
+    if (
+      oldTree["lifecycle"] &&
+      currTree["lifecycle"] &&
+      oldTree["lifecycle"]["destroyed"] !== currTree["lifecycle"]["destroyed"]
+    ) {
+      if (oldTree["lifecycle"]["destroyed"]) {
+        oldTree["lifecycle"]["destroyed"](element);
+      }
+    }
+
     if (typeof oldTree === "string" && typeof currTree !== "string") {
       patch(container, element, undefined, currTree, cb);
     } else if (typeof currTree === "string" || typeof currTree === "number") {
@@ -127,7 +139,6 @@ let patch = (container, element, oldTree, currTree, cb = undefinedNoop) => {
 export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch) => {
   let special = {
     ["tag"]: true,
-    ["bag"]: true,
     ["key"]: true,
     ["lifecycle"]: true,
     ["children"]: true
@@ -151,7 +162,8 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
 
     // top level component
     if (type === "function") {
-      return transform({ tag: tree }, instantiatedCallback, shallow);
+      // pass lifecycle for the case of root node of component being another component
+      return transform({ ["tag"]: tree, ["lifecycle"]: tree["lifecycle"] }, instantiatedCallback, shallow);
     }
 
     // collect attr and props
@@ -185,10 +197,10 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
 
       function getCurrentContext() {
         return {
-          ["state"]: instance["bag"]["state"],
-          ["props"]: instance["bag"]["props"],
-          ["children"]: instance["bag"]["children"],
-          ["setState"]: instance["bag"]["setState"],
+          ["state"]: instance["state"],
+          ["props"]: instance["props"],
+          ["children"]: instance["children"],
+          ["setState"]: instance["setState"],
           ...methods
         };
       }
@@ -197,33 +209,26 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
        * TODO please clean this.
        */
       function setState(f, cb) {
-        let el = instance["bag"]["el"];
-        let current = instance["bag"]["state"];
+        let el = instance["el"];
+        let current = instance["state"];
         let next = Object.assign(current, f(current));
-        Object.assign(instance["bag"]["state"], next);
+        Object.assign(instance["state"], next);
         let nextDeep = bindComponent(transform);
         let nextShallow = bindComponent(transform, true);
 
-        if (instance["bag"]["componentInstanceChildren"].length < 1) {
+        if (instance["componentInstanceChildren"].length < 1) {
           // no children to be concerned about, render it all.
-          patcher(el, el, instance["bag"]["lastVDOM"], (instance["bag"]["lastVDOM"] = nextDeep), () => {
+          patcher(el, el, instance["lastVDOM"], (instance["lastVDOM"] = nextDeep), () => {
             cb && cb(nextDeep);
           });
           return;
         }
 
-        patcher(el, el, instance["bag"]["lastVDOM"], nextShallow);
-
-        // TODO ACCOUNT FOR COMPONENTS ENTERING AND LEAVING DOM
-        // DO WE STILL NEED TO DO THIS?
-
-        // DONE
-        // TODO BUILD THE CORRECT NEXTTREE (DEEP) SO WE NEVER PASS PLACEHOLDERS INTO
-        //      PAST TREES
+        patcher(el, el, instance["lastVDOM"], nextShallow);
 
         let mergeChildIntoShallowTree = child => tree => {
           function merger(curr) {
-            if (curr["tag"] === child["bag"]["spec"]["tag"] && curr["key"] === child["bag"]["spec"]["key"]) {
+            if (curr["tag"] === child["spec"]["tag"] && curr["key"] === child["spec"]["key"]) {
               return tree;
             }
 
@@ -239,15 +244,29 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
         function callSetStateOnChildren(tree) {
           let children = tree["children"] || [];
 
+          // check if root node is component
+
+          if (tree["shallowPlaceholder"]) {
+            for (let bagged of instance["componentInstanceChildren"]) {
+              if (tree["tag"] === bagged["spec"]["tag"] && tree["key"] === bagged["spec"]["key"]) {
+                Object.assign(bagged["props"], tree["props"]);
+                delete bagged["children"];
+                bagged["children"] = tree["children"];
+                bagged["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
+              }
+            }
+          }
+
+          // business as usual
+
           for (let child of children) {
             if (child["shallowPlaceholder"]) {
-              for (let bagged of instance["bag"]["componentInstanceChildren"]) {
-                if (child["tag"] === bagged["bag"]["spec"]["tag"] && child["key"] === bagged["bag"]["spec"]["key"]) {
-                  Object.assign(bagged["bag"]["props"], child["props"]);
-                  // Object.assign(bagged["bag"]["children"], child["children"]); // doesnt work for string children
-                  delete bagged["bag"]["children"];
-                  bagged["bag"]["children"] = child["children"];
-                  bagged["bag"]["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
+              for (let bagged of instance["componentInstanceChildren"]) {
+                if (child["tag"] === bagged["spec"]["tag"] && child["key"] === bagged["spec"]["key"]) {
+                  Object.assign(bagged["props"], child["props"]);
+                  delete bagged["children"]; // for string assignment
+                  bagged["children"] = child["children"];
+                  bagged["setState"](valueNoop, mergeChildIntoShallowTree(bagged));
                 }
               }
 
@@ -259,15 +278,15 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
         }
 
         callSetStateOnChildren(nextShallow);
-        cb && cb((instance["bag"]["lastVDOM"] = nextShallow));
+        cb && cb((instance["lastVDOM"] = nextShallow));
       }
 
-      instance["bag"] = instance["bag"] || {};
-      instance["bag"]["props"] = props;
-      instance["bag"]["children"] = children;
-      instance["bag"]["state"] = state;
-      instance["bag"]["setState"] = setState;
-      instance["bag"]["componentInstanceChildren"] = [];
+      instance = instance || {};
+      instance["props"] = props;
+      instance["children"] = children;
+      instance["state"] = state;
+      instance["setState"] = setState;
+      instance["componentInstanceChildren"] = [];
 
       for (let key in methods) {
         ((key, f) => (methods[key] = (...args) => f.call(getCurrentContext(), ...args)))(key, methods[key]);
@@ -276,11 +295,18 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
       for (let key in lifecycle) {
         ((key, f) =>
           (lifecycle[key] = el => {
-            instance["bag"]["el"] = el;
+            instance["el"] = el;
+
+            if (tree["lifecycle"] && key !== "destroyed") {
+              // Call parent lifecycles. If the root node of a component
+              // is itself a component the original parent lifecycles
+              // were being overwritten.
+              tree["lifecycle"][key](el);
+            }
 
             if (key === "mounted") {
-              instance["bag"]["spec"] = tree;
-              instance["bag"]["uniqueID"] = unique();
+              instance["spec"] = tree;
+              instance["uniqueID"] = unique();
               instantiatedCallback && instantiatedCallback(instance);
             }
 
@@ -293,25 +319,22 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
       }
 
       function bindComponent(transformer, shallow = false) {
-        return transformer(
-          Object.assign(render.call(getCurrentContext()), { ["lifecycle"]: lifecycle }),
-          domUpdateHook,
-          shallow
-        );
+        let rendered = render.call(getCurrentContext()) || { ["tag"]: "template" }; // null render fix/hack
+        return transformer(Object.assign(rendered, { ["lifecycle"]: lifecycle }), domUpdateHook, shallow);
       }
 
       function domUpdateHook(that, isEnteringDom = true) {
         if (isEnteringDom) {
-          instance["bag"]["componentInstanceChildren"].push(that);
+          instance["componentInstanceChildren"].push(that);
           return;
         }
 
-        instance["bag"]["componentInstanceChildren"] = instance["bag"]["componentInstanceChildren"].filter(
-          item => that["bag"]["uniqueID"] !== item["bag"]["uniqueID"]
+        instance["componentInstanceChildren"] = instance["componentInstanceChildren"].filter(
+          item => that["uniqueID"] !== item["uniqueID"]
         );
       }
 
-      return (instance["bag"]["lastVDOM"] = bindComponent(transform));
+      return (instance["lastVDOM"] = bindComponent(transform));
     }
 
     // fix children
@@ -329,16 +352,21 @@ export let render = (rawTree, renderElement, cb = undefinedNoop, patcher = patch
     };
   };
 
-  return scheduleRender(transform(rawTree), cb);
+  // We should make all calls to patcher in the future async. Meditate on it.
+  let tree = transform(rawTree);
+  staleElement = patcher(renderElement, staleElement, staleTree, tree, cb);
+  staleTree = tree;
 
-  function scheduleRender(tree, cb) {
-    setTimeout(renderView, undefined, tree, cb); // meditate on this
-  }
+  // return scheduleRender(transform(rawTree), cb);
 
-  function renderView(tree, cb) {
-    staleElement = patcher(renderElement, staleElement, staleTree, tree, cb);
-    staleTree = tree;
-  }
+  // function scheduleRender(tree, cb) {
+  //   setTimeout(renderView, undefined, tree, cb); // meditate on this
+  // }
+
+  // function renderView(tree, cb) {
+  //   staleElement = patcher(renderElement, staleElement, staleTree, tree, cb);
+  //   staleTree = tree;
+  // }
 };
 
 export let component = signature => {
@@ -361,7 +389,6 @@ export let component = signature => {
   };
 
   return () => ({
-    ["bag"]: {},
     ["lifecycle"]: lifecycle,
     ["methods"]: signature,
     ["data"]: data,

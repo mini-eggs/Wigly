@@ -201,3 +201,178 @@ test("Composed functional components with children.", async t => {
   el = await asyncRender(parent);
   t.deepEqual(el.textContent, "Current Count: 3");
 });
+
+// misc
+
+test("Components work as first child part 1.", async t => {
+  let child = component({
+    render() {
+      return { children: "here we go" };
+    }
+  });
+
+  let parent = component({
+    render() {
+      return { tag: child };
+    }
+  });
+
+  let el = await asyncRender(parent);
+  t.deepEqual(el.textContent, "here we go");
+});
+
+test("Components work as first child part 2.", async t => {
+  let child = component({
+    render() {
+      return { children: "here we go" };
+    }
+  });
+
+  let parent = component({
+    render() {
+      return child;
+    }
+  });
+
+  let el = await asyncRender(parent);
+  t.deepEqual(el.textContent, "here we go");
+});
+
+test("Components can return null", async t => {
+  let item = component({
+    render() {
+      return null;
+    }
+  });
+
+  let el = await asyncRender(item);
+  t.deepEqual(el.textContent, "");
+});
+
+// Lifecycles
+
+test("Lifecycles work as expected part 1.", async t => {
+  let lifecycles = [];
+  let parentCtx;
+
+  let child = component({
+    mounted() {
+      lifecycles.push("mounted");
+    },
+    updated() {
+      lifecycles.push("updated");
+    },
+    destroyed() {
+      lifecycles.push("destroyed");
+    },
+    render() {
+      return { children: "hello world" };
+    }
+  });
+
+  let parent = component({
+    data() {
+      return {
+        active: true,
+        text: "Hi!"
+      };
+    },
+
+    render() {
+      parentCtx = this;
+
+      if (!this.state.active) {
+        return {};
+      }
+
+      return {
+        children: [
+          {
+            tag: child,
+            text: this.state.text
+          }
+        ]
+      };
+    }
+  });
+
+  await asyncRender(parent);
+  await new Promise(resolve => parentCtx.setState(() => ({ text: "Hello!" }), resolve));
+  await new Promise(resolve => parentCtx.setState(() => ({ active: false }), resolve));
+  t.deepEqual(lifecycles, ["mounted", "updated", "destroyed"]);
+});
+
+test("Lifecycles work as expected part 2.", async t => {
+  let childMounted = false;
+  let parentMounted = false;
+
+  let child = component({
+    mounted() {
+      childMounted = true;
+    },
+    render() {
+      return { children: "hello world" };
+    }
+  });
+
+  let parent = component({
+    mounted() {
+      parentMounted = true;
+    },
+    render() {
+      return child;
+    }
+  });
+
+  await asyncRender(parent);
+  t.deepEqual(childMounted, true);
+  t.deepEqual(parentMounted, true);
+});
+
+test("Lifecycles work as expected part 3.", async t => {
+  let lifecycles = [];
+  let parentCtx;
+
+  let child = component({
+    mounted() {
+      lifecycles.push("mounted");
+    },
+    updated() {
+      lifecycles.push("updated");
+    },
+    destroyed() {
+      lifecycles.push("destroyed");
+    },
+    render() {
+      return { children: "hello world" };
+    }
+  });
+
+  let parent = component({
+    data() {
+      return {
+        active: true,
+        text: "Hi!"
+      };
+    },
+
+    render() {
+      parentCtx = this;
+
+      if (!this.state.active) {
+        return { children: "inactive" };
+      }
+
+      return {
+        tag: child,
+        text: this.state.text
+      };
+    }
+  });
+
+  await asyncRender(parent);
+  await new Promise(resolve => parentCtx.setState(() => ({ text: "Hello!" }), resolve));
+  await new Promise(resolve => parentCtx.setState(() => ({ active: false }), resolve));
+
+  t.deepEqual(lifecycles, ["mounted", "updated", "destroyed"]);
+});
