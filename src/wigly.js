@@ -2,14 +2,8 @@ let valueNoop = () => ({});
 let nullNoop = () => null;
 let undefinedNoop = () => {};
 let clone = (...args) => Object.assign({}, ...args);
-// let unique = () =>
-//   Math.random()
-//     .toString(36)
-//     .substr(2, 9);
 
-function eventListener(event) {
-  return event.currentTarget.events[event.type](event);
-}
+export let h = (tag, attr, ...children) => ({ tag, ...attr, children });
 
 function updateAttribute(element, name, value, oldValue) {
   if (name === "key") {
@@ -36,10 +30,10 @@ function updateAttribute(element, name, value, oldValue) {
 
       if (value) {
         if (!oldValue) {
-          element.addEventListener(name, eventListener);
+          element.addEventListener(name, e => e.currentTarget.events[e.type](e));
         }
       } else {
-        element.removeEventListener(name, eventListener);
+        element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
       }
     } else if (
       name in element &&
@@ -103,10 +97,6 @@ function removeChildren(el, node) {
   return el;
 }
 
-function removeElement(parent, el, node) {
-  parent.removeChild(removeChildren(el, node));
-}
-
 function patch(parent, element, oldNode, node) {
   if (node === oldNode) {
   } else if (oldNode == null || oldNode["tag"] !== node["tag"]) {
@@ -114,7 +104,7 @@ function patch(parent, element, oldNode, node) {
     parent.insertBefore(newElement, element);
 
     if (oldNode != null) {
-      removeElement(parent, element, oldNode);
+      parent.removeChild(removeChildren(element, oldNode));
     }
 
     element = newElement;
@@ -141,7 +131,7 @@ function patch(parent, element, oldNode, node) {
     }
 
     while (i < oldChildren.length) {
-      removeElement(element, oldElements[i], oldChildren[i]);
+      element.removeChild(removeChildren(oldElements[i], oldChildren[i]));
       i++;
     }
   }
