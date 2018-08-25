@@ -1,5 +1,7 @@
 import test from "ava";
-import { component, render } from "../";
+import { h, component, render } from "../";
+
+let React = { createElement: h }; // because jsx reasons
 
 require("browser-env")();
 
@@ -96,4 +98,38 @@ test("Falsies render", async t => {
 
   el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
+});
+
+test("Passing children works through intermediate components.", async t => {
+  let Child = component({
+    render() {
+      return { children: this.children };
+    }
+  });
+
+  let Parent = component({
+    render() {
+      return { tag: Child, children: ["here", "we", "go"] };
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
+});
+
+test("Passing children works through intermediate components with jsx.", async t => {
+  let Child = component({
+    render() {
+      return <div>{this.children}</div>;
+    }
+  });
+
+  let Parent = component({
+    render() {
+      return <Child>Here we go</Child>;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "Here we go");
 });

@@ -10,8 +10,19 @@
     "test": "ava"
   },
   "devDependencies": {
+    "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "latest"
-  }
+  },
+  "ava": {
+    "babel": {
+      "testOptions": {
+        "presets": [
+          "@babel/preset-react"
+        ]
+      }
+    }
+  },
+  "dependencies": {}
 }

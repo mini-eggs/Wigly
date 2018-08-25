@@ -16,7 +16,7 @@ let special = {
   ["render"]: true
 };
 
-export let h = (tag, attr, ...children) => ({ tag, ...attr, children });
+export let h = (tag, attr, ...children) => ({ tag, ...attr, children: [].concat.apply([], children) });
 
 let lifecyleWrapper = (node, lc, el) => {
   node["lifecycle"] && node["lifecycle"][lc] && node["lifecycle"][lc](el);
