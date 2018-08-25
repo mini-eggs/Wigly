@@ -2,8 +2,26 @@ let valueNoop = () => ({});
 let nullNoop = () => null;
 let undefinedNoop = () => {};
 let clone = (...args) => Object.assign({}, ...args);
+let isSimple = i => typeof i === "number" || typeof i === "string";
+
+let special = {
+  ["tag"]: true,
+  ["key"]: true,
+  ["lifecycle"]: true,
+  ["children"]: true,
+  ["data"]: true,
+  ["mounted"]: true,
+  ["updated"]: true,
+  ["destroyed"]: true,
+  ["render"]: true
+};
 
 export let h = (tag, attr, ...children) => ({ tag, ...attr, children });
+
+let lifecyleWrapper = (node, lc, el) => {
+  node["lifecycle"] && node["lifecycle"][lc] && node["lifecycle"][lc](el);
+  return el;
+};
 
 function updateAttribute(element, name, value, oldValue) {
   if (name === "key") {
@@ -55,10 +73,7 @@ function updateAttribute(element, name, value, oldValue) {
 }
 
 function createElement(node) {
-  let el =
-    typeof node === "string" || typeof node === "number"
-      ? document.createTextNode(node)
-      : document.createElement(node["tag"]);
+  let el = isSimple(node) ? document.createTextNode(node) : document.createElement(node["tag"]);
 
   if (node["attr"]) {
     for (let child of node["children"]) {
@@ -70,9 +85,7 @@ function createElement(node) {
     }
   }
 
-  node["lifecycle"] && node["lifecycle"]["mounted"] && node["lifecycle"]["mounted"](el);
-
-  return el;
+  return lifecyleWrapper(node, "mounted", el);
 }
 
 function updateElement(el, node, oldAttributes, attributes) {
@@ -82,7 +95,7 @@ function updateElement(el, node, oldAttributes, attributes) {
     }
   }
 
-  node["lifecycle"] && node["lifecycle"]["updated"] && node["lifecycle"]["updated"](el);
+  return lifecyleWrapper(node, "updated", el);
 }
 
 function removeChildren(el, node) {
@@ -92,9 +105,7 @@ function removeChildren(el, node) {
     }
   }
 
-  node["lifecycle"] && node["lifecycle"]["destroyed"] && node["lifecycle"]["destroyed"](el);
-
-  return el;
+  return lifecyleWrapper(node, "destroyed", el);
 }
 
 function patch(parent, element, oldNode, node) {
@@ -140,20 +151,11 @@ function patch(parent, element, oldNode, node) {
 }
 
 export let render = (raw, container) => {
-  raw = {["tag"]:raw}
-
-  let special = {
-    ["tag"]: true,
-    ["key"]: true,
-    ["lifecycle"]: true,
-    ["children"]: true
-  };
-
-  return patch(container, undefined, undefined, transform(raw));
+  return patch(container, undefined, undefined, transform({ ["tag"]: raw }));
 
   function transform(tree, parentCallback = undefinedNoop, getSeedState = nullNoop) {
     // leaf node
-    if (typeof tree === "string" || typeof tree === "number") {
+    if (isSimple(tree)) {
       return tree;
     }
 
@@ -173,83 +175,64 @@ export let render = (raw, container) => {
       let methods = instance["methods"];
       let lifecycle = instance["lifecycle"];
       let children = (instance["children"] = tree["children"] || []);
+      let state = getSeedState(tree);
 
-      instance["props"] = props;
-      instance["renderedChildren"] = [];
-      instance["spec"] = tree;
-      instance["state"] = getSeedState(instance);
+      let el;
+      let lastVDOM;
+      let renderedChildren = [];
 
       // wire methods + lifecycle
       for (let key in methods) ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(key, methods[key]);
       for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
       function ctx() {
-        !instance["state"] && (instance["state"] = data.call({ ["children"]: children, ["props"]: props }));
-
+        !state && (state = data.call({ children, props }));
         return {
-          ["state"]: instance["state"],
-          ["props"]: instance["props"],
-          ["children"]: instance["children"],
-          ["setState"]: instance["setState"],
+          ["state"]: state,
+          ["props"]: props,
+          ["children"]: children,
+          ["setState"]: setState,
           ...methods
         };
       }
 
       /**
-       * So all this is working great
-       * lifecycle wise -- but we need to
-       * be passing down a seed state for
-       * children components (or something
-       * maybe we patch pre transformed trees
-       * but that has been very error prone)
+       * Turns out seeds are fucking great.
        */
-      function setState(f, cb) {
-        let el = instance["el"];
-        instance["state"] = { ...instance["state"], ...f({ ...instance["state"] }) };
+      function setState(f, cb = undefinedNoop) {
+        state = { ...state, ...f(state) };
         let vdom = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
-        patch(el, el, instance["lastVDOM"], (instance["lastVDOM"] = transform(vdom, childCallback, findChildSeedState)));
-        cb&&cb();
+        patch(el, el, lastVDOM, (lastVDOM = transform(vdom, childCallback, findChildSeedState)));
+        cb();
       }
 
-      instance["setState"] = setState;
-
-      function lifecycleWrap(f, key, el) {
-        instance["el"] = el;
-
-        if(key==="mounted") {
-          parentCallback(instance, true)
-        }
-
+      function lifecycleWrap(f, key, next) {
+        el = next;
+        key === "mounted" && parentCallback(tree, true);
         f.call(ctx(), el);
       }
 
       function childCallback(that, enteringDOM) {
         // TODO - remove when an item is removed from dom
-        if(enteringDOM) {
-          instance["renderedChildren"].push(that)
+        if (enteringDOM) {
+          renderedChildren.push(that);
         }
       }
 
       // meditate on this check, it's very simple and error prone as is
       function findChildSeedState(that) {
-        for(let renderedChild of instance["renderedChildren"]) {
-          if(
-            that["spec"]["tag"] === renderedChild["spec"]["tag"] &&
-            that["spec"]["key"] === renderedChild["spec"]["key"]
-          ) {
-            return {...renderedChild["state"]}
-          }
+        for (let renderedChild of renderedChildren) {
+          if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"])
+            return renderedChild["state"];
         }
       }
 
-      return (instance["lastVDOM"] = transform({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback)); // yum
+      return (lastVDOM = transform({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback)); // yum
     }
 
     // fix children
     let children = tree["children"] || [];
-    if (typeof children === "string" || typeof children === "number") {
-      children = [children];
-    }
+    isSimple(children) && (children = [children]);
 
     return {
       ["tag"]: tree["tag"] || "div",
@@ -258,31 +241,18 @@ export let render = (raw, container) => {
       ["attr"]: props || {},
       ["children"]: children
         .filter(item => item !== null)
-        .map(item => (item === false ? { tag: "template", children: [] } : transform(item, parentCallback, getSeedState))) // meditate on the template
+        .map(i => (i === false ? { tag: "template", children: [] } : transform(i, parentCallback, getSeedState))) // meditate on the template
     };
   }
 };
 
-export let component = signature => {
-  let notMethods = {
-    ["data"]: true,
-    ["mounted"]: true,
-    ["updated"]: true,
-    ["destroyed"]: true,
-    ["render"]: true
-  };
-
-  let methods = {};
-  for (let k in signature) !notMethods[k] && (methods[k] = signature[k]);
-
-  return () => ({
-    ["data"]: signature["data"] || valueNoop,
-    ["lifecycle"]: {
-      ["mounted"]: signature["mounted"] || undefinedNoop,
-      ["updated"]: signature["updated"] || undefinedNoop,
-      ["destroyed"]: signature["destroyed"] || undefinedNoop
-    },
-    ["methods"]: methods,
-    ["render"]: signature["render"] || nullNoop
-  });
-};
+export let component = sig => () => ({
+  ["data"]: sig["data"] || valueNoop,
+  ["lifecycle"]: {
+    ["mounted"]: sig["mounted"] || undefinedNoop,
+    ["updated"]: sig["updated"] || undefinedNoop,
+    ["destroyed"]: sig["destroyed"] || undefinedNoop
+  },
+  ["methods"]: Object.keys(sig).reduce((t, k) => (special[k] ? t : { ...t, [k]: sig[k] }), {}), // collect all those not in special
+  ["render"]: sig["render"] || nullNoop
+});
