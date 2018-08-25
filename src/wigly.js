@@ -153,101 +153,94 @@ function patch(parent, element, oldNode, node) {
   return element;
 }
 
-export let render = (raw, container) => {
-  return patch(container, undefined, undefined, transform({ ["tag"]: raw }));
-
-  function transform(tree, parentCallback = undefinedNoop, getSeedState = nullNoop) {
-    // leaf node
-    if (isSimple(tree)) {
-      return tree;
-    }
-
-    // collect attr/props
-    let props = {};
-    for (let k in tree) {
-      if (!special[k]) {
-        props[k] = tree[k];
-      }
-    }
-
-    // component
-    if (typeof tree["tag"] === "function") {
-      let instance = tree["tag"]();
-      let data = instance["data"];
-      let render = instance["render"];
-      let methods = instance["methods"];
-      let lifecycle = instance["lifecycle"];
-      let children = (instance["children"] = tree["children"] || []);
-      let state = getSeedState(tree);
-
-      let el;
-      let lastVDOM;
-      let renderedChildren = [];
-
-      // wire methods + lifecycle
-      for (let key in methods) ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(key, methods[key]);
-      for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
-
-      function ctx() {
-        !state && (state = data.call({ children, props }));
-        return {
-          ["state"]: state,
-          ["props"]: props,
-          ["children"]: children,
-          ["setState"]: setState,
-          ...methods
-        };
-      }
-
-      /**
-       * Turns out seeds are fucking great.
-       */
-      function setState(f, cb = undefinedNoop) {
-        state = { ...state, ...f(state) };
-        let vdom = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
-        patch(el, el, lastVDOM, (lastVDOM = transform(vdom, childCallback, findChildSeedState)));
-        cb();
-      }
-
-      function lifecycleWrap(f, key, next) {
-        el = next;
-        key === "mounted" && parentCallback(tree, true);
-        f.call(ctx(), el);
-      }
-
-      function childCallback(that, enteringDOM) {
-        // TODO - remove when an item is removed from dom
-        if (enteringDOM) {
-          renderedChildren.push(that);
-        }
-      }
-
-      // meditate on this check, it's very simple and error prone as is
-      function findChildSeedState(that) {
-        for (let renderedChild of renderedChildren) {
-          if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"])
-            return renderedChild["state"];
-        }
-      }
-
-      return (lastVDOM = transform({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback)); // yum
-    }
-
-    // fix children
-    let children = tree["children"] || [];
-    isSimple(children) && (children = [children]);
-
-    return {
-      ["tag"]: tree["tag"] || "div",
-      ["key"]: tree["key"],
-      ["lifecycle"]: tree["lifecycle"] || {},
-      ["attr"]: props || {},
-      ["children"]: children
-        .filter(item => item !== null)
-        .map(i => (i === false ? { tag: "template", children: [] } : transform(i, parentCallback, getSeedState))) // meditate on the template
-    };
+let transformer = (tree, parentCallback, getSeedState) => {
+  // leaf node
+  if (isSimple(tree)) {
+    return tree;
   }
+
+  // collect attr/props
+  let props = {};
+  for (let k in tree) !special[k] && (props[k] = tree[k]);
+
+  // component
+  if (typeof tree["tag"] === "function") {
+    let instance = tree["tag"]();
+    let data = instance["data"];
+    let render = instance["render"];
+    let methods = instance["methods"];
+    let lifecycle = instance["lifecycle"];
+    let children = (instance["children"] = tree["children"] || []);
+    let state = getSeedState && getSeedState(tree);
+
+    let el;
+    let lastVDOM;
+    let renderedChildren = [];
+
+    // wire methods + lifecycle
+    for (let key in methods) ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(key, methods[key]);
+    for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
+
+    function ctx() {
+      !state && (state = data.call({ children, props }));
+      return {
+        ["state"]: state,
+        ["props"]: props,
+        ["children"]: children,
+        ["setState"]: setState,
+        ...methods
+      };
+    }
+
+    /**
+     * Turns out seeds are fucking great.
+     */
+    function setState(f, cb) {
+      state = { ...state, ...f(state) };
+      let vdom = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
+      patch(el, el, lastVDOM, (lastVDOM = transformer(vdom, childCallback, findChildSeedState)));
+      cb && cb();
+    }
+
+    function lifecycleWrap(f, key, next) {
+      el = next;
+      key === "mounted" && parentCallback && parentCallback(tree, true);
+      f.call(ctx(), el);
+    }
+
+    function childCallback(that, enteringDOM) {
+      // TODO - remove when an item is removed from dom
+      if (enteringDOM) {
+        renderedChildren.push(that);
+      }
+    }
+
+    // meditate on this check, it's very simple and error prone as is
+    function findChildSeedState(that) {
+      for (let renderedChild of renderedChildren) {
+        if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"]) return renderedChild["state"];
+      }
+    }
+
+    return (lastVDOM = transformer({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null)); // yum
+  }
+
+  // fix children
+  let children = tree["children"] || [];
+  isSimple(children) && (children = [children]);
+
+  return {
+    ["tag"]: tree["tag"] || "div",
+    ["key"]: tree["key"],
+    ["lifecycle"]: tree["lifecycle"] || {},
+    ["attr"]: props || {},
+    ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
+    // FYI we removed a template hack here, not sure why everything is working now but it is. Cool!
+  };
 };
+
+export let render = (raw, container) =>
+  patch(container, undefined, undefined, transformer({ ["tag"]: raw }, null, null));
 
 // let FunctionalAdaptor = f =>
 //   component({
