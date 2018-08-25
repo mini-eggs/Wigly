@@ -53,16 +53,19 @@ function updateAttribute(element, name, value, oldValue) {
       } else {
         element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
       }
-    } else if (
-      name in element &&
-      name !== "list" &&
-      name !== "type" &&
-      name !== "draggable" &&
-      name !== "spellcheck" &&
-      name !== "translate"
-    ) {
-      element[name] = value == null ? "" : value;
-    } else if (value != null && value !== false) {
+    }
+    // do we need this?
+    // else if (
+    //   name in element &&
+    //   name !== "list" &&
+    //   name !== "type" &&
+    //   name !== "draggable" &&
+    //   name !== "spellcheck" &&
+    //   name !== "translate"
+    // ) {
+    //   element[name] = value == null ? "" : value;
+    // }
+    else if (value != null && value !== false) {
       element.setAttribute(name, value);
     }
 
@@ -245,6 +248,13 @@ export let render = (raw, container) => {
     };
   }
 };
+
+// let FunctionalAdaptor = f =>
+//   component({
+//     render() {
+//       return f({ props: this.props, children: this.children });
+//     }
+//   });
 
 export let component = sig => () => ({
   ["data"]: sig["data"] || valueNoop,

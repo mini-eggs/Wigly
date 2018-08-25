@@ -16,6 +16,24 @@ test("'Hello, World!' - part one", async t => {
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
+// should we support this?
+// test("'Hello, World!' - functional component.", async t => {
+//   let Functional = ({ props, children }) => (
+//     <div>
+//       {props.greeting}, {children}
+//     </div>
+//   );
+
+//   let App = component({
+//     render() {
+//       return <Functional greeting="Hello">World!</Functional>;
+//     }
+//   });
+
+//   let el = render(App, document.body);
+//   t.deepEqual(el.textContent, "Hello, World!");
+// });
+
 test("Ensure prop updates happen everywhere", async t => {
   let childCtx;
   let parentCtx;
