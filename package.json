@@ -3,10 +3,12 @@
   "version": "0.0.24",
   "main": "dist/es5.js",
   "scripts": {
-    "start": "npm run es5 && npm run es6 && npm run gzip",
+    "start": "npm run clean && npm run es5 && npm run es6 && npm run license && npm run gzip",
+    "clean": "rm -rf dist",
     "es5": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
     "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
-    "gzip": "gzip dist/es5.js -k -f && gzip dist/es6.js -k -f",
+    "license": "node scripts/add-license.js",
+    "gzip": "gzip dist/* -k -f",
     "test": "ava",
     "size": "wc -c dist/es6.js.gz | cut -d' ' -f1"
   },
