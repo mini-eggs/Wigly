@@ -151,3 +151,75 @@ test("Passing children works through intermediate components with jsx.", async t
   let el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Here we go");
 });
+
+test("Lifecyles work as expected", async t => {
+  let mountCount = 0;
+
+  let Child = component({
+    mounted() {
+      mountCount++;
+    },
+    render() {
+      return <div>testing</div>;
+    }
+  });
+
+  let Parent = component({
+    mounted() {
+      mountCount++;
+    },
+    render() {
+      return <Child />;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "testing");
+  t.deepEqual(mountCount, 2);
+});
+
+test("Child components don't keep stale state.", async t => {
+  let parentCtx;
+  let childCtx;
+
+  let Child = component({
+    data() {
+      return { name: "World" };
+    },
+    render() {
+      childCtx = this;
+      return <div>Hello, {this.state.name}!</div>;
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return { active: true };
+    },
+    render() {
+      parentCtx = this;
+
+      if (!this.state.active) {
+        return <div>Testing</div>;
+      }
+
+      return (
+        <div>
+          <Child />
+        </div>
+      );
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "Hello, World!");
+
+  childCtx.setState(() => ({ name: "Twitter" }));
+  t.deepEqual(el.textContent, "Hello, Twitter!");
+
+  parentCtx.setState(() => ({ active: false }));
+  t.deepEqual(el.textContent, "Testing");
+
+  parentCtx.setState(() => ({ active: true }));
+  t.deepEqual(el.textContent, "Hello, World!");
+});

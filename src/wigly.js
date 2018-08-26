@@ -200,15 +200,14 @@ let transformer = (tree, parentCallback, getSeedState) => {
 
     function lifecycleWrap(f, key, next) {
       el = next;
-      key === "mounted" && parentCallback && parentCallback(tree, true);
+      key === "mounted" && parentCallback && parentCallback(key, el, tree, lastVDOM, true);
+      key !== "mounted" && parentCallback && parentCallback(key, el, tree, lastVDOM, false);
       f && f.call(ctx(), el);
     }
 
-    function childCallback(that, enteringDOM) {
-      // TODO - remove when an item is removed from dom
-      if (enteringDOM) {
-        renderedChildren.push(that);
-      }
+    function childCallback(key, el, that, vdom, enteringDOM) {
+      lastVDOM === vdom && lifecycle[key](el); // for the case of parent only has one node child; another component
+      enteringDOM && renderedChildren.push(that);
     }
 
     // meditate on this check, it's very simple and error prone as is
