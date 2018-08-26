@@ -18,7 +18,7 @@ function appendLicense(license, loc) {
 
 function format(license) {
   let lines = licence.split("\n");
-  let output = "/**";
+  let output = "/**\n";
   for (let line of lines) output += ` * ${line}\n`;
   output += " */";
   return output;
