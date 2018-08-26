@@ -178,7 +178,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     function ctx() {
-      !state && data && (state = data.call({ children, props }));
+      !state && data && (state = data.call({ ["children"]: children, ["props"]: props }));
       return {
         ["state"]: state,
         ["props"]: props,
@@ -236,13 +236,6 @@ let transformer = (tree, parentCallback, getSeedState) => {
 
 export let render = (raw, container) =>
   patch(container, undefined, undefined, transformer({ ["tag"]: raw }, null, null));
-
-// let FunctionalAdaptor = f =>
-//   component({
-//     render() {
-//       return f({ props: this.props, children: this.children });
-//     }
-//   });
 
 export let component = sig => () => ({
   ["data"]: sig["data"],

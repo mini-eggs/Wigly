@@ -16,24 +16,6 @@ test("'Hello, World!' - part one", async t => {
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
-// should we support this?
-// test("'Hello, World!' - functional component.", async t => {
-//   let Functional = ({ props, children }) => (
-//     <div>
-//       {props.greeting}, {children}
-//     </div>
-//   );
-
-//   let App = component({
-//     render() {
-//       return <Functional greeting="Hello">World!</Functional>;
-//     }
-//   });
-
-//   let el = render(App, document.body);
-//   t.deepEqual(el.textContent, "Hello, World!");
-// });
-
 test("Ensure prop updates happen everywhere", async t => {
   let childCtx;
   let parentCtx;
@@ -222,4 +204,31 @@ test("Child components don't keep stale state.", async t => {
 
   parentCtx.setState(() => ({ active: true }));
   t.deepEqual(el.textContent, "Hello, World!");
+});
+
+test("Data hook has props and children set correctly.", async t => {
+  let data;
+
+  let Child = component({
+    data() {
+      data = this;
+    },
+    render() {
+      return (
+        <div>
+          {this.props.greeting}, {this.children}
+        </div>
+      );
+    }
+  });
+
+  let Parent = component({
+    render() {
+      return <Child greeting="Hello">World!</Child>;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "Hello, World!");
+  t.deepEqual(data, { props: { greeting: "Hello" }, children: ["World!"] });
 });
