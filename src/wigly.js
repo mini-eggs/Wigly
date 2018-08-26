@@ -1,7 +1,3 @@
-let valueNoop = () => ({});
-let nullNoop = () => null;
-let undefinedNoop = () => {};
-let clone = (...args) => Object.assign({}, ...args);
 let isSimple = i => typeof i === "number" || typeof i === "string";
 
 let special = {
@@ -26,7 +22,7 @@ let lifecyleWrapper = (node, lc, el) => {
 function updateAttribute(element, name, value, oldValue) {
   if (name === "key") {
   } else if (name === "style") {
-    for (let i in clone(oldValue, value)) {
+    for (let i in { ...oldValue, ...value }) {
       let style = value == null || value[i] == null ? "" : value[i];
       if (i[0] === "-") {
         element[name].setProperty(i, style);
@@ -92,7 +88,7 @@ function createElement(node) {
 }
 
 function updateElement(el, node, oldAttributes, attributes) {
-  for (let name in clone(oldAttributes, attributes)) {
+  for (let name in { ...oldAttributes, ...attributes }) {
     if (attributes[name] !== (name === "value" || name === "checked" ? el[name] : oldAttributes[name])) {
       updateAttribute(el, name, attributes[name], oldAttributes[name]);
     }
@@ -182,7 +178,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     function ctx() {
-      !state && (state = data.call({ children, props }));
+      !state && data && (state = data.call({ children, props }));
       return {
         ["state"]: state,
         ["props"]: props,
@@ -205,7 +201,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     function lifecycleWrap(f, key, next) {
       el = next;
       key === "mounted" && parentCallback && parentCallback(tree, true);
-      f.call(ctx(), el);
+      f && f.call(ctx(), el);
     }
 
     function childCallback(that, enteringDOM) {
@@ -250,12 +246,12 @@ export let render = (raw, container) =>
 //   });
 
 export let component = sig => () => ({
-  ["data"]: sig["data"] || valueNoop,
+  ["data"]: sig["data"],
   ["lifecycle"]: {
-    ["mounted"]: sig["mounted"] || undefinedNoop,
-    ["updated"]: sig["updated"] || undefinedNoop,
-    ["destroyed"]: sig["destroyed"] || undefinedNoop
+    ["mounted"]: sig["mounted"],
+    ["updated"]: sig["updated"],
+    ["destroyed"]: sig["destroyed"]
   },
   ["methods"]: Object.keys(sig).reduce((t, k) => (special[k] ? t : { ...t, [k]: sig[k] }), {}), // collect all those not in special
-  ["render"]: sig["render"] || nullNoop
+  ["render"]: sig["render"]
 });
