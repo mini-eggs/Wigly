@@ -232,3 +232,79 @@ test("Data hook has props and children set correctly.", async t => {
   t.deepEqual(el.textContent, "Hello, World!");
   t.deepEqual(data, { props: { greeting: "Hello" }, children: ["World!"] });
 });
+
+test("Ensure mounted setState updates state", async t => {
+  let test;
+
+  let Child = component({
+    data() {
+      return { cb: false };
+    },
+
+    mounted() {
+      this.setState(() => ({ cb: () => "Hello, Twitter!" }));
+    },
+
+    destroyed() {
+      test = this.state.cb();
+    },
+
+    render() {
+      return <div>Hello, World!</div>;
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return { active: true };
+    },
+
+    mounted() {
+      this.setState(() => ({ active: false }));
+    },
+
+    render() {
+      return <div>{this.state.active && <Child />}</div>;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "");
+  t.deepEqual(test, "Hello, Twitter!");
+});
+
+test("Mapping props item stays consistent in DOM.", async t => {
+  let parentCtx;
+
+  let Child = component({
+    render() {
+      return (
+        <div>
+          {this.props.items.map(({ title }) => (
+            <div>{title}</div>
+          ))}
+        </div>
+      );
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return {
+        items: [{ title: "here" }, { title: "we" }, { title: "go" }],
+        active: true
+      };
+    },
+
+    render() {
+      parentCtx = this;
+      return <div>{this.state.active && <Child items={this.state.items} />}</div>;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
+
+  parentCtx.setState(() => ({ active: false }));
+  t.deepEqual(el.textContent, "");
+});
