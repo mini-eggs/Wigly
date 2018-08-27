@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "main": "dist/es5.js",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run license && npm run gzip",
@@ -16,7 +16,7 @@
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
-    "google-closure-compiler-linux": "latest"
+    "google-closure-compiler-linux": "^20180805.0.0"
   },
   "ava": {
     "babel": {
