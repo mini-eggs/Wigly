@@ -19,10 +19,10 @@ let lifecyleWrapper = (node, lc, el) => {
   return el;
 };
 
-function updateAttribute(element, name, value, oldValue) {
+function updateAttribute(element, name, value, old) {
   if (name === "key") {
   } else if (name === "style") {
-    for (let i in { ...oldValue, ...value }) {
+    for (let i in { ...old, ...value }) {
       let style = value == null || value[i] == null ? "" : value[i];
       if (i[0] === "-") {
         element[name].setProperty(i, style);
@@ -35,7 +35,7 @@ function updateAttribute(element, name, value, oldValue) {
       name = name.slice(2);
 
       if (element.events) {
-        if (!oldValue) oldValue = element.events[name];
+        if (!old) old = element.events[name];
       } else {
         element.events = {};
       }
@@ -43,7 +43,7 @@ function updateAttribute(element, name, value, oldValue) {
       element.events[name] = value;
 
       if (value) {
-        if (!oldValue) {
+        if (!old) {
           element.addEventListener(name, e => e.currentTarget.events[e.type](e));
         }
       } else {
@@ -87,10 +87,10 @@ function createElement(node) {
   return lifecyleWrapper(node, "mounted", el);
 }
 
-function updateElement(el, node, oldAttributes, attributes) {
-  for (let name in { ...oldAttributes, ...attributes }) {
-    if (attributes[name] !== (name === "value" || name === "checked" ? el[name] : oldAttributes[name])) {
-      updateAttribute(el, name, attributes[name], oldAttributes[name]);
+function updateElement(el, node, old, attr) {
+  for (let name in { ...old, ...attr }) {
+    if (attr[name] !== (name === "value" || name === "checked" ? el[name] : old[name])) {
+      updateAttribute(el, name, attr[name], old[name]);
     }
   }
 
@@ -107,24 +107,24 @@ function removeChildren(el, node) {
   return lifecyleWrapper(node, "destroyed", el);
 }
 
-function patch(parent, element, oldNode, node) {
-  if (node === oldNode) {
-  } else if (oldNode == null || oldNode["tag"] !== node["tag"]) {
+function patch(parent, element, old, node) {
+  if (node === old) {
+  } else if (old == null || old["tag"] !== node["tag"]) {
     let newElement = createElement(node);
     parent.insertBefore(newElement, element);
 
-    if (oldNode != null) {
-      parent.removeChild(removeChildren(element, oldNode));
+    if (old != null) {
+      parent.removeChild(removeChildren(element, old));
     }
 
     element = newElement;
-  } else if (oldNode["tag"] == null) {
+  } else if (old["tag"] == null) {
     element.nodeValue = node;
   } else {
-    updateElement(element, node, oldNode["attr"], node["attr"]);
+    updateElement(element, node, old["attr"], node["attr"]);
 
     let oldElements = [];
-    let oldChildren = oldNode["children"];
+    let oldChildren = old["children"];
     let children = node["children"];
 
     for (let i = 0; i < oldChildren.length; i++) {
@@ -178,13 +178,18 @@ let transformer = (tree, parentCallback, getSeedState) => {
     for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     function ctx() {
-      !state && data && (state = data.call({ ["children"]: children, ["props"]: props }));
-      return {
-        ["state"]: state,
+      let partial = {
         ["props"]: props,
         ["children"]: children,
-        ["setState"]: setState,
         ...methods
+      };
+
+      !state && data && (state = data.call(partial));
+
+      return {
+        ["state"]: state,
+        ["setState"]: setState,
+        ...partial
       };
     }
 
@@ -200,8 +205,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
 
     function lifecycleWrap(f, key, next) {
       el = next;
-      key === "mounted" && parentCallback && parentCallback(key, el, tree, lastVDOM, true);
-      key !== "mounted" && parentCallback && parentCallback(key, el, tree, lastVDOM, false);
+      parentCallback && parentCallback(key, el, tree, lastVDOM, key === "mounted");
       f && f.call(ctx(), el);
     }
 
@@ -220,17 +224,16 @@ let transformer = (tree, parentCallback, getSeedState) => {
     return (lastVDOM = transformer({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null)); // yum
   }
 
-  // fix children
+  // ensure children are arr
   let children = tree["children"] || [];
   isSimple(children) && (children = [children]);
 
   return {
     ["tag"]: tree["tag"] || "div",
     ["key"]: tree["key"],
-    ["lifecycle"]: tree["lifecycle"] || {},
-    ["attr"]: props || {},
+    ["lifecycle"]: tree["lifecycle"],
+    ["attr"]: props,
     ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
-    // FYI we removed a template hack here, not sure why everything is working now but it is. Cool!
   };
 };
 
@@ -244,6 +247,6 @@ export let component = sig => () => ({
     ["updated"]: sig["updated"],
     ["destroyed"]: sig["destroyed"]
   },
-  ["methods"]: Object.keys(sig).reduce((t, k) => (special[k] ? t : { ...t, [k]: sig[k] }), {}), // collect all those not in special
+  ["methods"]: Object.keys(sig).reduce((t, k) => (special[k] ? t : { ...t, [k]: sig[k] }), {}), // everything else is a method
   ["render"]: sig["render"]
 });
