@@ -1,4 +1,5 @@
 let isSimple = i => typeof i === "number" || typeof i === "string";
+let falsy = i => i === undefined || i === false || i === null;
 
 let special = {
   ["tag"]: true,
@@ -112,11 +113,7 @@ function patch(parent, element, old, node) {
   } else if (old == null || old["tag"] !== node["tag"]) {
     let newElement = createElement(node);
     parent.insertBefore(newElement, element);
-
-    if (old != null) {
-      parent.removeChild(removeChildren(element, old));
-    }
-
+    old && parent.removeChild(removeChildren(element, old));
     element = newElement;
   } else if (!old["tag"]) {
     element.nodeValue = node;
@@ -235,7 +232,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
     // ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
-    ["children"]: children.map(i => (!i ? { tag: "template" } : transformer(i, parentCallback, getSeedState))) // hack that fixes everything -- DO SOMETHING BETTER
+    ["children"]: children.map(i => (falsy(i) ? { tag: "template" } : transformer(i, parentCallback, getSeedState))) // hack that fixes everything -- DO SOMETHING BETTER
   };
 };
 

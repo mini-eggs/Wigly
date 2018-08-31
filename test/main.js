@@ -375,3 +375,58 @@ test("Children with conditional renders are removed from DOM properly.", t => {
   parentCtx.setState(() => ({ component: ChildOne, name: "ChildOne" }));
   t.deepEqual(el.textContent, "Child One");
 });
+
+test("setState and callback after mount works as expected", async t => {
+  let parentCtx;
+  let childCtx;
+  let root;
+
+  let promise = new Promise(resolve => {
+    let Child = component({
+      data() {
+        return { count: 0 };
+      },
+
+      updated(el) {
+        if (this.props.count === 1 && this.state.count === 0) {
+          this.setState(({ count }) => ({ count: count + 1 }), () => this.onUpdate(el));
+        }
+      },
+
+      onUpdate(el) {
+        resolve({ el, ctx: this });
+      },
+
+      render() {
+        childCtx = this;
+        return (
+          <div>
+            {this.props.count} - {this.state.count}
+          </div>
+        );
+      }
+    });
+
+    let Parent = component({
+      data() {
+        return { count: 0 };
+      },
+
+      render() {
+        parentCtx = this;
+        return <Child count={this.state.count} />;
+      }
+    });
+
+    root = render(Parent, document.body);
+  });
+
+  t.deepEqual(root.textContent, "0 - 0");
+
+  parentCtx.setState(() => ({ count: 1 }));
+
+  let { el, ctx } = await promise;
+  t.deepEqual(el.textContent, "1 - 1");
+  t.deepEqual(ctx.props, { count: 1 });
+  t.deepEqual(ctx.state, { count: 1 });
+});
