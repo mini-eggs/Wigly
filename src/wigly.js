@@ -118,7 +118,7 @@ function patch(parent, element, old, node) {
     }
 
     element = newElement;
-  } else if (old["tag"] == null) {
+  } else if (!old["tag"]) {
     element.nodeValue = node;
   } else {
     updateElement(element, node, old["attr"], node["attr"]);
@@ -198,7 +198,8 @@ let transformer = (tree, parentCallback, getSeedState) => {
      */
     function setState(f, cb) {
       state = { ...state, ...f(state) };
-      let vdom = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
+      let context = ctx();
+      let vdom = { ...render.call(context), ["lifecycle"]: lifecycle };
       patch(el, el, lastVDOM, (lastVDOM = transformer(vdom, childCallback, findChildSeedState)));
       cb && cb();
     }
@@ -233,7 +234,8 @@ let transformer = (tree, parentCallback, getSeedState) => {
     ["key"]: tree["key"],
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
-    ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
+    // ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
+    ["children"]: children.map(i => (!i ? { tag: "template" } : transformer(i, parentCallback, getSeedState))) // hack that fixes everything -- DO SOMETHING BETTER
   };
 };
 

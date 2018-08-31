@@ -308,3 +308,70 @@ test("Mapping props item stays consistent in DOM.", async t => {
   parentCtx.setState(() => ({ active: false }));
   t.deepEqual(el.textContent, "");
 });
+
+test("Children with conditional renders are removed from DOM properly.", t => {
+  let childOneCtx;
+  let childTwoCtx;
+  let parentCtx;
+
+  let DeepChild = component({
+    render() {
+      return <div>here we go</div>;
+    }
+  });
+
+  let ChildOne = component({
+    data() {
+      return { active: false };
+    },
+
+    render() {
+      childOneCtx = this;
+      return (
+        <div>
+          {this.state.active && <DeepChild />}
+          <div>Child One</div>
+        </div>
+      );
+    }
+  });
+
+  let ChildTwo = component({
+    render() {
+      childTwoCtx = this;
+      return <div>Child Two</div>;
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return { component: ChildOne, name: "ChildOne" };
+    },
+
+    render() {
+      let Curr = this.state.component;
+      parentCtx = this;
+      return (
+        <div>
+          <Curr />
+        </div>
+      );
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "Child One");
+
+  parentCtx.setState(() => ({ component: ChildTwo, name: "ChildTwo" }));
+  t.deepEqual(el.textContent, "Child Two");
+
+  parentCtx.setState(() => ({ component: ChildOne, name: "ChildOne" }));
+  childOneCtx.setState(() => ({ active: true }));
+  t.deepEqual(el.textContent, "here we go" + "Child One");
+
+  parentCtx.setState(() => ({ component: ChildTwo, name: "ChildTwo" }));
+  t.deepEqual(el.textContent, "Child Two");
+
+  parentCtx.setState(() => ({ component: ChildOne, name: "ChildOne" }));
+  t.deepEqual(el.textContent, "Child One");
+});

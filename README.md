@@ -8,8 +8,99 @@ I was rewriting a website of mine. Was aiming for zero dependencies and the leas
 
 #### What
 
-It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (the ES6 build is 1.2kb gzipped).
+It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (the ES6 build is 1.38 kb gzipped and minified).
 
 #### Examples
 
-Examples coming soon. API is in flux.
+ES5 'Hello, World!'
+
+```html
+<body></body>
+<script src="https://unpkg.com/wigly@0.0.27/dist/es5.js"></script>
+<script>
+    var App = wigly.component({
+        render() {
+            return { children: "This is a triumph." };
+        }
+    })
+
+    wigly.render(App, document.body);
+</script>
+```
+
+JSX 'Hello, World!'
+
+```javascript
+import { h, component, render } from "wigly";
+
+let App = component({
+  render() {
+    return <div>This is a triumph.</div>;
+  }
+});
+
+render(App, document.body);
+```
+
+State, props, children, and events.
+
+```javascript
+import { h, component, render } from "wigly";
+
+let InputContainer = component({
+  data() {
+    return { name: "" }; // initial state
+  },
+
+  handleInput(event) {
+    this.setState(() => ({ name: event.target.value }));
+  },
+
+  render() {
+    return (
+      <div>
+        <h1>{this.props.title}</h1>
+        <h2>
+          {this.children}: {this.state.name || "____"}
+        </h2>
+        <input oninput={this.handleInput} />
+      </div>
+    );
+  }
+});
+
+let App = component({
+  render() {
+    return <InputContainer title="Please enter your name below.">Your name is</InputContainer>;
+  }
+});
+
+render(App, document.body);
+```
+
+Lifecycles.
+
+```javascript
+import { h, component, render } from "wigly";
+
+let App = component({
+  mounted(el) {
+    // called after component has entered DOM.
+  },
+
+  updated(el) {
+    // called after component has updated. I.e. after this.setState
+    // has been called or after props/children change.
+  },
+
+  destroyed(el) {
+    // called after component has left DOM.
+  },
+
+  render() {
+    return <div>This is a triumph.</div>;
+  }
+});
+
+render(App, document.body);
+```
