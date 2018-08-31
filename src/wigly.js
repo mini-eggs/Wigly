@@ -1,5 +1,6 @@
 let isSimple = i => typeof i === "number" || typeof i === "string";
 let falsy = i => i === undefined || i === false || i === null;
+let hack = { tag: "template", children: [] }; // You wouldn't believe how useful this is.
 
 let special = {
   ["tag"]: true,
@@ -31,44 +32,28 @@ function updateAttribute(element, name, value, old) {
         element[name][i] = style;
       }
     }
+  } else if (name[0] === "o" && name[1] === "n") {
+    name = name.slice(2);
+
+    if (element.events) {
+      if (!old) old = element.events[name];
+    } else {
+      element.events = {};
+    }
+
+    element.events[name] = value;
+
+    if (value) {
+      if (!old) {
+        element.addEventListener(name, e => e.currentTarget.events[e.type](e));
+      }
+    } else {
+      element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
+    }
+  } else if (falsy(value)) {
+    element.removeAttribute(name);
   } else {
-    if (name[0] === "o" && name[1] === "n") {
-      name = name.slice(2);
-
-      if (element.events) {
-        if (!old) old = element.events[name];
-      } else {
-        element.events = {};
-      }
-
-      element.events[name] = value;
-
-      if (value) {
-        if (!old) {
-          element.addEventListener(name, e => e.currentTarget.events[e.type](e));
-        }
-      } else {
-        element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
-      }
-    }
-    // do we need this?
-    // else if (
-    //   name in element &&
-    //   name !== "list" &&
-    //   name !== "type" &&
-    //   name !== "draggable" &&
-    //   name !== "spellcheck" &&
-    //   name !== "translate"
-    // ) {
-    //   element[name] = value == null ? "" : value;
-    // }
-    else if (value != null && value !== false) {
-      element.setAttribute(name, value);
-    }
-
-    if (value == null || value === false) {
-      element.removeAttribute(name);
-    }
+    element.setAttribute(name, value);
   }
 }
 
@@ -232,7 +217,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
     // ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
-    ["children"]: children.map(i => (falsy(i) ? { tag: "template" } : transformer(i, parentCallback, getSeedState))) // hack that fixes everything -- DO SOMETHING BETTER
+    ["children"]: children.map(i => (falsy(i) ? hack : transformer(i, parentCallback, getSeedState)))
   };
 };
 

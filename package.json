@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "main": "dist/es5.js",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run license && npm run gzip",
