@@ -84,7 +84,7 @@ function updateElement(el, node, old, attr) {
 }
 
 function removeChildren(el, node) {
-  if (node["children"]) {
+  if (node["children"] && el) {
     for (let i = 0; i < node["children"].length; i++) {
       removeChildren(el.childNodes[i], node["children"][i]);
     }
@@ -153,6 +153,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
 
     let el;
     let lastVDOM;
+    let isActive = true;
     let renderedChildren = [];
 
     // wire methods + lifecycle
@@ -160,41 +161,41 @@ let transformer = (tree, parentCallback, getSeedState) => {
     for (let key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     function ctx() {
-      let partial = {
-        ["props"]: props,
-        ["children"]: children,
-        ...methods
-      };
-
+      let partial = { ["props"]: props, ["children"]: children, ...methods };
       !state && data && (state = data.call(partial));
-
-      return {
-        ["state"]: state,
-        ["setState"]: setState,
-        ...partial
-      };
+      return { ["state"]: state, ["setState"]: setState, ...partial };
     }
 
     /**
      * Turns out seeds are fucking great.
      */
     function setState(f, cb) {
-      state = { ...state, ...f(state) };
-      let context = ctx();
-      let vdom = { ...render.call(context), ["lifecycle"]: lifecycle };
-      patch(el, el, lastVDOM, (lastVDOM = transformer(vdom, childCallback, findChildSeedState)));
-      cb && cb();
+      if (isActive) {
+        state = { ...state, ...f(state) };
+        let context = ctx();
+        let vdom = { ...render.call(context), ["lifecycle"]: lifecycle };
+        patch(el, el, lastVDOM, (lastVDOM = transformer(vdom, childCallback, findChildSeedState)));
+        cb && cb();
+      }
     }
 
     function lifecycleWrap(f, key, next) {
       el = next;
-      parentCallback && parentCallback(key, el, tree, lastVDOM, key === "mounted");
+
+      if (key === "mounted" && parentCallback) {
+        parentCallback(key, el, tree, lastVDOM);
+      }
+
+      if (key === "destroyed") {
+        isActive = false;
+      }
+
       f && f.call(ctx(), el);
     }
 
-    function childCallback(key, el, that, vdom, enteringDOM) {
+    function childCallback(key, el, that, vdom) {
       lastVDOM === vdom && lifecycle[key](el); // for the case of parent only has one node child; another component
-      enteringDOM && renderedChildren.push(that);
+      renderedChildren.push(that);
     }
 
     // meditate on this check, it's very simple and error prone as is
