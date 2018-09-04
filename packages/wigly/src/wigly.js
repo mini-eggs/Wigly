@@ -135,7 +135,7 @@ function patch(parent, element, old, node) {
   return element;
 }
 
-let transformer = (tree, parentCallback, getSeedState) => {
+let transformer = (patcher, tree, parentCallback, getSeedState) => {
   // leaf node
   if (isSimple(tree)) {
     return tree;
@@ -178,7 +178,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
         state = { ...state, ...f(state) };
         let context = ctx();
         let vdom = { ...render.call(context), ["lifecycle"]: lifecycle };
-        patch(el, el, lastVDOM, (lastVDOM = transformer(vdom, childCallback, findChildSeedState)));
+        patcher(el, el, lastVDOM, (lastVDOM = transformer(patcher, vdom, childCallback, findChildSeedState)));
         cb && cb();
       }
     }
@@ -209,7 +209,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
       }
     }
 
-    return (lastVDOM = transformer({ ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null)); // yum
+    return (lastVDOM = transformer(patcher, { ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null)); // yum
   }
 
   // ensure children are arr
@@ -221,12 +221,13 @@ let transformer = (tree, parentCallback, getSeedState) => {
     ["key"]: tree["key"],
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
-    ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(i, parentCallback, getSeedState)))
+    ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(patcher, i, parentCallback, getSeedState)))
   };
 };
 
-export let render = (raw, container) =>
-  patch(container, undefined, undefined, transformer({ ["tag"]: raw }, null, null));
+export let render = (raw, container, patcher = patch) => {
+  return patcher(container, undefined, undefined, transformer(patcher, { ["tag"]: raw }, null, null));
+};
 
 export let component = sig => () => ({
   ["data"]: sig["data"],
