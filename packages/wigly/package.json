@@ -1,0 +1,30 @@
+{
+  "name": "wigly",
+  "main": "dist/es5.js",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "npm run clean && npm run es5 && npm run es6 && npm run license && npm run gzip",
+    "clean": "rm -rf dist",
+    "es5": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
+    "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
+    "license": "node scripts/add-license.js",
+    "gzip": "gzip dist/* -k -f",
+    "test": "ava",
+    "size": "wc -c dist/es6.js.gz | cut -d' ' -f1"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.0.0-rc.3",
+    "ava": "1.0.0-beta.7",
+    "browser-env": "^3.2.5",
+    "google-closure-compiler-linux": "^20180805.0.0"
+  },
+  "ava": {
+    "babel": {
+      "testOptions": {
+        "presets": [
+          "@babel/preset-react"
+        ]
+      }
+    }
+  }
+}
