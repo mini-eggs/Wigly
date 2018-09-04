@@ -1,6 +1,6 @@
 let isSimple = i => typeof i === "number" || typeof i === "string";
 let falsy = i => i === undefined || i === false || i === null;
-let hack = { tag: "template", children: [] }; // You wouldn't believe how useful this is.
+let falsyNode = { tag: "comment", children: [] }; // You wouldn't believe how useful this is.
 
 let special = {
   ["tag"]: true,
@@ -58,7 +58,11 @@ function updateAttribute(element, name, value, old) {
 }
 
 function createElement(node) {
-  let el = isSimple(node) ? document.createTextNode(node) : document.createElement(node["tag"]);
+  let el = isSimple(node)
+    ? document.createTextNode(node) // leaf
+    : node["tag"] === "comment"
+      ? document.createComment("") // conditional
+      : document.createElement(node["tag"]); // default
 
   if (node["attr"]) {
     for (let child of node["children"]) {
@@ -217,8 +221,7 @@ let transformer = (tree, parentCallback, getSeedState) => {
     ["key"]: tree["key"],
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
-    // ["children"]: children.filter(i => i).map(i => transformer(i, parentCallback, getSeedState))
-    ["children"]: children.map(i => (falsy(i) ? hack : transformer(i, parentCallback, getSeedState)))
+    ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(i, parentCallback, getSeedState)))
   };
 };
 

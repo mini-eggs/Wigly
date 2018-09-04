@@ -430,3 +430,39 @@ test("setState and callback after mount works as expected", async t => {
   t.deepEqual(ctx.props, { count: 1 });
   t.deepEqual(ctx.state, { count: 1 });
 });
+
+test("Swapping children works as expected.", t => {
+  let ctx;
+
+  let One = component({
+    render: () => ({ children: "test 1" })
+  });
+
+  let Two = component({
+    render: () => ({ children: "test 2" })
+  });
+
+  let Parent = component({
+    data: () => ({ component: One }),
+    render() {
+      ctx = this;
+      return <this.state.component />;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "test 1");
+
+  ctx.setState(() => ({ component: Two }));
+  t.deepEqual(el.textContent, "test 2");
+});
+
+test("Falsy values are renderd as comments.", t => {
+  let Parent = component({
+    render: () => <div>{false}</div>
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.nodeName.toUpperCase(), "DIV");
+  t.deepEqual(el.innerHTML, "<!---->");
+});
