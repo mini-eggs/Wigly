@@ -1,6 +1,6 @@
 let isSimple = i => typeof i === "number" || typeof i === "string";
 let falsy = i => i === undefined || i === false || i === null;
-let falsyNode = { tag: "comment", children: [] }; // You wouldn't believe how useful this is.
+let falsyNode = { tag: "#", children: [] }; // This ultimately gets rendered as a comment node.
 
 let special = {
   ["tag"]: true,
@@ -60,7 +60,7 @@ function updateAttribute(element, name, value, old) {
 function createElement(node) {
   let el = isSimple(node)
     ? document.createTextNode(node) // leaf
-    : node["tag"] === "comment"
+    : node["tag"] === falsyNode["tag"]
       ? document.createComment("") // conditional
       : document.createElement(node["tag"]); // default
 
