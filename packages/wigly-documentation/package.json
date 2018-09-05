@@ -1,6 +1,6 @@
 {
   "name": "wigly-documentation",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Wigly's documentation website.",
   "main": "src/server.js",
   "author": "Evan M Jones <me@evanjon.es> (https://evanjon.es/)",
@@ -19,17 +19,17 @@
     "helmet": "^3.13.0",
     "lodash": "^4.17.10",
     "navaid": "^1.0.0",
-    "wigly": "^0.1.x",
-    "wigly-server": "^0.1.x",
-    "wigly-store": "^0.1.x",
-    "wigly-store-connect": "^0.1.x"
+    "wigly": "^0.1.4",
+    "wigly-server": "^0.1.4",
+    "wigly-store": "^0.1.4",
+    "wigly-store-connect": "^0.1.4"
   },
   "devDependencies": {
     "babel-core": "^6.0.0",
-    "babel-plugin-transform-object-rest-spread": "^6.0.0",
-    "babel-plugin-syntax-dynamic-import": "^6.0.0",
-    "babel-plugin-transform-react-jsx": "^6.0.0",
     "babel-loader": "^7.0.0",
+    "babel-plugin-syntax-dynamic-import": "^6.0.0",
+    "babel-plugin-transform-object-rest-spread": "^6.0.0",
+    "babel-plugin-transform-react-jsx": "^6.0.0",
     "backpack-core": "^0.7.0",
     "css-loader": "^1.0.0",
     "file-loader": "^2.0.0",
