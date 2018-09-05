@@ -1,5 +1,5 @@
 import test from "ava";
-import { h, component, render } from "../";
+import { h, component, render, hydrate } from "../";
 
 let React = { createElement: h }; // because jsx reasons
 
@@ -465,4 +465,31 @@ test("Falsy values are renderd as comments.", t => {
   let el = render(Parent, document.body);
   t.deepEqual(el.nodeName.toUpperCase(), "DIV");
   t.deepEqual(el.innerHTML, "<!---->");
+});
+
+test("Hydration works as expected.", t => {
+  document.body.innerHTML = "<div>This is a triumph.</div>";
+
+  let App = component({
+    render: () => <div>This is a triumph.</div>
+  });
+
+  let el = hydrate(App, document.body);
+  t.deepEqual(el.textContent, "This is a triumph.");
+  t.deepEqual(document.body.innerHTML, "<div>This is a triumph.</div>");
+});
+
+test("Hydration mount hook is called.", t => {
+  let mounted = false;
+  document.body.innerHTML = "<div>This is a triumph.</div>";
+
+  let App = component({
+    mounted: () => (mounted = true),
+    render: () => <div>This is a triumph.</div>
+  });
+
+  let el = hydrate(App, document.body);
+  t.deepEqual(el.textContent, "This is a triumph.");
+  t.deepEqual(document.body.innerHTML, "<div>This is a triumph.</div>");
+  t.deepEqual(true, mounted);
 });

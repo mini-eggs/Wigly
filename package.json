@@ -5,8 +5,7 @@
     "lerna": "^3.0.3"
   },
   "scripts": {
-    "start": "lerna run start && npm run copy-text-files",
-    "test": "lerna run test",
-    "copy-text-files": "cp -r packages/wigly/README.md ./ && cp -r packages/wigly/LICENCE.md ./"
+    "start": "lerna run start && node scripts/prep.js",
+    "test": "lerna run test"
   }
 }

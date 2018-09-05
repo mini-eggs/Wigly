@@ -229,6 +229,14 @@ export let render = (raw, container, patcher = patch) => {
   return patcher(container, undefined, undefined, transformer(patcher, { ["tag"]: raw }, null, null));
 };
 
+export let hydrate = (raw, container) => {
+  // Meditate on this.
+  // This "works" but is FAR from the final implementation.
+  // Dont' sweat it for now.
+  container.removeChild(container.firstChild);
+  return patch(container, undefined, undefined, transformer(patch, { ["tag"]: raw }, null, null));
+};
+
 export let component = sig => () => ({
   ["data"]: sig["data"],
   ["lifecycle"]: {

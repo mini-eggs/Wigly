@@ -1,5 +1,5 @@
 {
-  "name": "wigly",
+  "name": "wigly-store",
   "main": "dist/es5.js",
   "version": "0.1.3",
   "scripts": {
@@ -8,13 +8,15 @@
     "es5": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
     "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
     "gzip": "gzip dist/* -k -f",
-    "test": "ava",
-    "size": "wc -c dist/es6.js.gz | cut -d' ' -f1"
+    "test": "ava"
+  },
+  "peerDependencies": {
+    "wigly": "^0.1.x"
   },
   "devDependencies": {
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
-    "browser-env": "^3.2.5",
+    "wigly": "^0.1.x",
     "google-closure-compiler-linux": "^20180805.0.0"
   },
   "ava": {
