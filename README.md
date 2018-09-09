@@ -2,6 +2,8 @@
 
 A silly-small, component-based UI library. Built to be lean.
 
+[Live Example](https://codepen.io/minieggs40/project/editor/AwGdww)
+
 <img src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.png" 
      data-canonical-src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.png" width="250" />
 
