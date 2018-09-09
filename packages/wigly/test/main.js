@@ -168,6 +168,7 @@ test("Child components don't keep stale state.", async t => {
     data() {
       return { name: "World" };
     },
+
     render() {
       childCtx = this;
       return <div>Hello, {this.state.name}!</div>;
@@ -178,6 +179,7 @@ test("Child components don't keep stale state.", async t => {
     data() {
       return { active: true };
     },
+
     render() {
       parentCtx = this;
 
@@ -492,4 +494,60 @@ test("Hydration mount hook is called.", t => {
   t.deepEqual(el.textContent, "This is a triumph.");
   t.deepEqual(document.body.innerHTML, "<div>This is a triumph.</div>");
   t.deepEqual(true, mounted);
+});
+
+test("Updates work as expected with parent setState.", t => {
+  let ctx;
+
+  let Child = component({
+    data() {
+      return {
+        items: [
+          { title: "test 1", active: false },
+          { title: "test 2", active: false },
+          { title: "test 3", active: false },
+          { title: "test 4", active: false },
+          { title: "test 5", active: false }
+        ]
+      };
+    },
+
+    afterUpdate() {
+      this.props.oninput(this.state.items.filter(({ active }) => active).length);
+    },
+
+    render() {
+      ctx = this;
+      return (
+        <div>
+          {this.state.items.map((item, i) => (
+            <div class={item.active ? "active" : ""}>{item.title}</div>
+          ))}
+        </div>
+      );
+    }
+  });
+
+  let Parent = component({
+    data() {
+      return { val: 0 };
+    },
+
+    handleUpdate(val) {
+      this.setState(() => ({ val }));
+    },
+
+    render() {
+      return <Child oninput={this.handleUpdate} />;
+    }
+  });
+
+  let el = render(Parent, document.body);
+  t.deepEqual(el.querySelectorAll(".active").length, 0);
+
+  ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: true })) }), ctx.afterUpdate);
+  t.deepEqual(el.querySelectorAll(".active").length, 5);
+
+  ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: false })) }), ctx.afterUpdate);
+  t.deepEqual(el.querySelectorAll(".active").length, 0);
 });

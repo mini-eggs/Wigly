@@ -183,29 +183,34 @@ let transformer = (patcher, tree, parentCallback, getSeedState) => {
       }
     }
 
+    /**
+     * Hm, is this getting hard to read? Lol.
+     */
     function lifecycleWrap(f, key, next) {
       el = next;
-
-      if (key === "mounted" && parentCallback) {
-        parentCallback(key, el, tree, lastVDOM);
-      }
-
-      if (key === "destroyed") {
-        isActive = false;
-      }
-
+      key === "destroyed" && (isActive = false);
+      parentCallback && parentCallback(key, el, tree, lastVDOM, ctx);
       f && f.call(ctx(), el);
     }
 
-    function childCallback(key, el, that, vdom) {
-      lastVDOM === vdom && lifecycle[key](el); // for the case of parent only has one node child; another component
-      renderedChildren.push(that);
+    function childCallback(key, el, that, vdom, childCtx) {
+      // For the case of parent only has one node child; another component.
+      lastVDOM === vdom && lifecycle[key](el);
+
+      if (key === "mounted") {
+        renderedChildren.push({ ...that, ["childCtx"]: childCtx });
+      } else if (key === "destroyed") {
+        // This check could be (and should) better. TODO
+        renderedChildren = renderedChildren.filter(item => item["tag"] !== that["tag"]);
+      }
     }
 
     // meditate on this check, it's very simple and error prone as is
     function findChildSeedState(that) {
       for (let renderedChild of renderedChildren) {
-        if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"]) return renderedChild["state"];
+        if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"]) {
+          return renderedChild["childCtx"]()["state"];
+        }
       }
     }
 
