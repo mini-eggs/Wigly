@@ -1,5 +1,5 @@
 let isSimple = i => typeof i === "number" || typeof i === "string";
-let falsy = i => i === undefined || i === false || i === null;
+let falsy = i => i === undefined || i === false || i === null || i === "";
 let falsyNode = { tag: "#", children: [] }; // This ultimately gets rendered as a comment node.
 
 let special = {
@@ -79,7 +79,7 @@ function createElement(node) {
 
 function updateElement(el, node, old, attr) {
   for (let name in { ...old, ...attr }) {
-    if (attr[name] !== (name === "value" || name === "checked" ? el[name] : old[name])) {
+    if (attr[name] !== old[name]) {
       updateAttribute(el, name, attr[name], old[name]);
     }
   }
@@ -176,9 +176,9 @@ let transformer = (patcher, tree, parentCallback, getSeedState) => {
     function setState(f, cb) {
       if (isActive) {
         state = { ...state, ...f(state) };
-        let context = ctx();
-        let vdom = { ...render.call(context), ["lifecycle"]: lifecycle };
-        patcher(el, el, lastVDOM, (lastVDOM = transformer(patcher, vdom, childCallback, findChildSeedState)));
+        let rendered = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
+        let next = transformer(patcher, rendered, childCallback, findChildSeedState);
+        patcher(el, el, lastVDOM, (lastVDOM = next));
         cb && cb();
       }
     }
@@ -197,12 +197,22 @@ let transformer = (patcher, tree, parentCallback, getSeedState) => {
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
 
+      let push = () => renderedChildren.push({ ...that, ["childCtx"]: childCtx });
+      let removeCurr = item => item["tag"] !== that["tag"] && item["key"] !== that["key"];
+      let remove = () => (renderedChildren = renderedChildren.filter(removeCurr));
+
       if (key === "mounted") {
-        renderedChildren.push({ ...that, ["childCtx"]: childCtx });
-      } else if (key === "destroyed") {
-        // This check could be (and should) better. TODO
-        renderedChildren = renderedChildren.filter(item => item["tag"] !== that["tag"]);
+        push();
+        return;
       }
+
+      if (key === "updated") {
+        remove();
+        push();
+        return;
+      }
+
+      remove();
     }
 
     // meditate on this check, it's very simple and error prone as is
@@ -214,7 +224,7 @@ let transformer = (patcher, tree, parentCallback, getSeedState) => {
       }
     }
 
-    return (lastVDOM = transformer(patcher, { ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null)); // yum
+    return (lastVDOM = transformer(patcher, { ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null));
   }
 
   // ensure children are arr
