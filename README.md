@@ -2,8 +2,8 @@
 
 A silly-small, component-based UI library. Built to be lean.
 
-<img src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.svg" 
-     data-canonical-src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.svg" width="250" />
+<img src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.png" 
+     data-canonical-src="https://raw.githubusercontent.com/mini-eggs/Wigly/master/assets/wigly_final.png" width="250" />
 
 #### Why
 
