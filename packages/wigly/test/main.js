@@ -551,3 +551,24 @@ test("Updates work as expected with parent setState.", t => {
   ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: false })) }), ctx.afterUpdate);
   t.deepEqual(el.querySelectorAll(".active").length, 0);
 });
+
+test("Both types of setStates work.", t => {
+  let ctx;
+
+  let app = component({
+    data: () => ({ name: "Evan" }),
+    render() {
+      ctx = this;
+      return <div>Hello, my name is {this.state.name}.</div>;
+    }
+  });
+
+  let el = render(app, document.body);
+  t.deepEqual(el.textContent, "Hello, my name is Evan.");
+
+  ctx.setState({ name: "Joba" });
+  t.deepEqual(el.textContent, "Hello, my name is Joba.");
+
+  ctx.setState(() => ({ name: "Madison" }));
+  t.deepEqual(el.textContent, "Hello, my name is Madison.");
+});

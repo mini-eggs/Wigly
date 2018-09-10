@@ -175,7 +175,8 @@ let transformer = (patcher, tree, parentCallback, getSeedState) => {
      */
     function setState(f, cb) {
       if (isActive) {
-        state = { ...state, ...f(state) };
+        let partial = typeof f === "function" ? f(state) : f;
+        state = { ...state, ...partial };
         let rendered = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
         let next = transformer(patcher, rendered, childCallback, findChildSeedState);
         patcher(el, el, lastVDOM, (lastVDOM = next));
