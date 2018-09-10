@@ -88,7 +88,7 @@ function updateElement(el, node, old, attr) {
 }
 
 function removeChildren(el, node) {
-  if (node["children"] && el) {
+  if (el && node["children"]) {
     for (let i = 0; i < node["children"].length; i++) {
       removeChildren(el.childNodes[i], node["children"][i]);
     }
@@ -113,20 +113,20 @@ function patch(parent, element, old, node) {
     let oldChildren = old["children"];
     let children = node["children"];
 
-    for (let i = 0; i < oldChildren.length; i++) {
+    for (let i = 0; i < oldChildren.length && element; i++) {
       oldElements[i] = element.childNodes[i];
     }
 
     let i = 0;
     let k = 0;
 
-    while (k < children.length) {
+    while (k < children.length && element) {
       patch(element, oldElements[i], oldChildren[i], children[k]);
       k++;
       i++;
     }
 
-    while (i < oldChildren.length) {
+    while (i < oldChildren.length && oldElements[i]) {
       element.removeChild(removeChildren(oldElements[i], oldChildren[i]));
       i++;
     }
