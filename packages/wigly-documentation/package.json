@@ -1,6 +1,6 @@
 {
   "name": "wigly-documentation",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Wigly's documentation website.",
   "main": "src/server.js",
   "author": "Evan M Jones <me@evanjon.es> (https://evanjon.es/)",
@@ -19,10 +19,10 @@
     "helmet": "^3.13.0",
     "lodash": "^4.17.10",
     "navaid": "^1.0.0",
-    "wigly": "^0.1.6",
-    "wigly-server": "^0.1.6",
-    "wigly-store": "^0.1.6",
-    "wigly-store-connect": "^0.1.6"
+    "wigly": "^0.1.7",
+    "wigly-server": "^0.1.7",
+    "wigly-store": "^0.1.7",
+    "wigly-store-connect": "^0.1.7"
   },
   "devDependencies": {
     "babel-core": "^6.0.0",
