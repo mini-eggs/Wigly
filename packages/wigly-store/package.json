@@ -1,7 +1,7 @@
 {
   "name": "wigly-store",
   "main": "dist/es5.js",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip",
     "clean": "rm -rf dist",
@@ -17,7 +17,7 @@
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "google-closure-compiler-linux": "^20180805.0.0",
-    "wigly": "^0.1.7"
+    "wigly": "^0.1.8"
   },
   "ava": {
     "babel": {
