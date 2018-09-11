@@ -1,42 +1,44 @@
 import test from "ava";
-import wigly, { h, component, render } from "wigly";
+import { h, render } from "wigly";
 import { createStore } from "wigly-store";
 import { createConnector } from "../";
 
-let React = { createElement: h }; // because jsx reasons
+var React = { createElement: h }; // because jsx reasons
 
 require("browser-env")();
 
 test("This is a triumph.", t => {
-  let user = {
+  var user = {
     UPDATE_NAME: ({ payload }) => ({ name: payload }),
     _: ({ store = { name: "Evan" } }) => store
   };
 
-  let connector = createConnector(wigly, createStore({ user }));
+  var store = createStore({ user });
+  var connector = createConnector(store);
 
-  let userConnector = connector(
+  var userConnector = connector(
     state => ({ ...state.user }),
     dispatch => ({ updateName: val => dispatch("UPDATE_NAME", val) })
   );
 
-  let updaterFunc;
-  let Parent = component({
+  var updaterFunc;
+
+  var Parent = {
     render() {
       updaterFunc = this.props.updateName;
       return <div>Hello, {this.props.name}!</div>;
     }
-  });
+  };
 
   Parent = userConnector(Parent);
 
-  let App = component({
+  var App = {
     render() {
       return <Parent />;
     }
-  });
+  };
 
-  let el = render(App, document.body);
+  var el = render(App, document.body);
   t.deepEqual(el.textContent, "Hello, Evan!");
 
   updaterFunc("Joba");

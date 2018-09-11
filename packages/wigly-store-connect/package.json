@@ -11,13 +11,16 @@
     "test": "ava"
   },
   "peerDependencies": {
-    "wigly": "^0.1.x"
+    "wigly": "^0.1.x",
+    "wigly-store": "^0.1.x"
   },
   "devDependencies": {
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "google-closure-compiler-linux": "^20180805.0.0",
-    "wigly": "^0.1.8"
+    "browser-env": "^3.2.5",
+    "wigly": "^0.1.x",
+    "wigly-store": "^0.1.x"
   },
   "ava": {
     "babel": {
@@ -42,5 +45,8 @@
   "homepage": "https://github.com/mini-eggs/wigly",
   "bugs": "https://github.com/mini-eggs/wigly/issues",
   "license": "MIT",
-  "repository": "https://github.com/mini-eggs/wigly"
+  "repository": "https://github.com/mini-eggs/wigly",
+  "dependencies": {
+    "browser-env": "^3.2.5"
+  }
 }

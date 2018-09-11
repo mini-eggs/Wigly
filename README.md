@@ -23,11 +23,11 @@ ES5 'Hello, World!'
 <body></body>
 <script src="//unpkg.com/wigly@latest"></script>
 <script>
-    var App = wigly.component({
+    var App = {
         render() {
             return { children: "This is a triumph." };
         }
-    })
+    }
 
     wigly.render(App, document.body);
 </script>
@@ -36,13 +36,13 @@ ES5 'Hello, World!'
 JSX 'Hello, World!'
 
 ```javascript
-import { h, component, render } from "wigly";
+import { h, render } from "wigly";
 
-let App = component({
+let App = {
   render() {
     return <div>This is a triumph.</div>;
   }
-});
+};
 
 render(App, document.body);
 ```
@@ -50,9 +50,9 @@ render(App, document.body);
 State, props, children, and events.
 
 ```javascript
-import { h, component, render } from "wigly";
+import { h, render } from "wigly";
 
-let InputContainer = component({
+let InputContainer = {
   data() {
     return { name: "" }; // initial state
   },
@@ -72,13 +72,13 @@ let InputContainer = component({
       </div>
     );
   }
-});
+};
 
-let App = component({
+let App = {
   render() {
     return <InputContainer title="Please enter your name below.">Your name is</InputContainer>;
   }
-});
+};
 
 render(App, document.body);
 ```
@@ -86,9 +86,9 @@ render(App, document.body);
 Lifecycles.
 
 ```javascript
-import { h, component, render } from "wigly";
+import { h, render } from "wigly";
 
-let App = component({
+let App = {
   mounted(el) {
     // called after component has entered DOM.
   },
@@ -105,7 +105,107 @@ let App = component({
   render() {
     return <div>This is a triumph.</div>;
   }
-});
+};
 
 render(App, document.body);
+```
+
+#### Advanced patterns
+
+There's a few common ways you can build abstraction with Wigly. Higher order components, render props, and mixins are all available. Here are examples of each:
+
+#### Higher order components
+
+```javascript
+import { h, render } from "wigly";
+
+var withName = Component => ({
+  data() {
+    return { name: "Evan" };
+  },
+
+  render() {
+    return <Component {...this.state} />;
+  }
+});
+
+var Example = {
+  render() {
+    return <div>My name is {this.props.name}</div>;
+  }
+};
+
+var ExampleWithName = withName(Example);
+
+render(ExampleWithName, document.body);
+```
+
+#### Render props
+
+```javascript
+import { h, render } from "wigly";
+
+var Name = {
+  data() {
+    return { name: "Evan" };
+  },
+
+  render() {
+    var f = this.children[0]; /* we only care about this first child in this example */
+    return f(this.state);
+  }
+};
+
+var Example = {
+  render() {
+    return <Name>{({ name }) => <div>My name is {name}</div>}</Name>;
+  }
+};
+
+render(Example, document.body);
+```
+
+#### Mixins
+
+```javascript
+import { h, render } from "wigly";
+
+var FormMixin = {
+  update(key) {
+    return event => this.setState({ [key]: event.target.value });
+  },
+
+  stop(f) {
+    return event => {
+      event.stopPropagation();
+      event.preventDefault();
+      f(event);
+      return false;
+    };
+  }
+};
+
+var Form = {
+  ...FormMixin,
+
+  data() {
+    return { fname: "", lname: "" };
+  },
+
+  handleSubmit(event) {
+    alert("Do the thing!");
+  },
+
+  render() {
+    return (
+      <form onsubmit={this.stop(this.handleSubmit)}>
+        <input type="text" oninput={this.update("fname")} name="fname" placeholder="First Name" />
+        <input type="text" oninput={this.update("lname")} name="lname" placeholder="Last Name" />
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+};
+
+render(Form, document.body);
 ```
