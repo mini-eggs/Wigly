@@ -112,7 +112,7 @@ render(App, document.body);
 
 #### Advanced patterns
 
-There's a few common ways you can build abstraction with Wigly. Higher order components, render props, and mixins are all available. Here are examples of each:
+There's a few common ways you can build abstractions with Wigly. Higher order components, render props, and mixins are all available. Here are examples of each:
 
 #### Higher order components
 
@@ -125,7 +125,11 @@ var withName = Component => ({
   },
 
   render() {
-    return <Component {...this.state} />;
+    return (
+      <Component {...this.state} {...this.props}>
+        {this.children}
+      </Component>
+    );
   }
 });
 
