@@ -691,3 +691,44 @@ test("Example: mixin", t => {
   el.dispatchEvent(new Event("input"));
   t.deepEqual(ctx.state, { fname: "Evan", lname: "" });
 });
+
+test("Deep children behave properly.", t => {
+  var One = {
+    render() {
+      return <button onclick={this.props.onclick} />;
+    }
+  };
+
+  var Two = {
+    render() {
+      return <div>{this.children}</div>;
+    }
+  };
+
+  var Three = {
+    data() {
+      return { click: 0 };
+    },
+
+    handleClick() {
+      this.setState(({ click }) => ({ click: click + 1 }));
+    },
+
+    render() {
+      return (
+        <div>
+          <div>Click Count: {this.state.click}</div>
+          <Two>
+            <One onclick={this.handleClick} />
+          </Two>
+        </div>
+      );
+    }
+  };
+
+  var el = render(Three, document.body);
+  t.deepEqual(el.textContent, "Click Count: 0");
+
+  el.querySelector("button").click();
+  t.deepEqual(el.textContent, "Click Count: 1");
+});

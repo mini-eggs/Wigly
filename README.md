@@ -13,7 +13,7 @@ I was rewriting a website of mine. Was aiming for zero dependencies and the leas
 
 #### What
 
-It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (the ES6 build is 1.4 kb gzipped and minified).
+It's a view library! Like React/Preact, Vue, or HyperApp. It's my fav bits from React and Vue smashed into one while staying very lean with respect to kb size (the ES6 build is 1.43 kb gzipped and minified while the ES5 build is 2.07kb gzipped).
 
 #### Examples
 
@@ -24,7 +24,7 @@ ES5 'Hello, World!'
 <script src="//unpkg.com/wigly@latest"></script>
 <script>
     var App = {
-        render() {
+        render: function() {
             return { children: "This is a triumph." };
         }
     }
@@ -83,7 +83,7 @@ let App = {
 render(App, document.body);
 ```
 
-Lifecycles.
+#### Lifecycles.
 
 ```javascript
 import { h, render } from "wigly";
