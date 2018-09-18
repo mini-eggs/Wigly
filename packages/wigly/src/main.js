@@ -23,6 +23,8 @@ var lifecyleWrapper = (node, lc, el) => {
 
 var updateAttribute = (element, name, value, old) => {
   if (name === "key") {
+  } else if (name === "value") {
+    element[name] = value;
   } else if (name === "style") {
     for (var i in { ...old, ...value }) {
       var style = value == null || value[i] == null ? "" : value[i];
