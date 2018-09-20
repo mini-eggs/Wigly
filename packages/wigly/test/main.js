@@ -1,9 +1,11 @@
 import test from "ava";
-import { h, render } from "../";
+import { h, render } from "../dist/es6";
 
 let React = { createElement: h }; // because jsx reasons
 
 require("browser-env")();
+
+var sleep = (t = 1) => new Promise(r => setTimeout(r, t));
 
 test("'Hello, World!' - part one", async t => {
   let HelloWorld = {
@@ -731,4 +733,66 @@ test("Deep children behave properly.", t => {
 
   el.querySelector("button").click();
   t.deepEqual(el.textContent, "Click Count: 1");
+});
+
+test("Deep and nested children will update correctly.", async t => {
+  var ctx;
+
+  var Destination = {
+    data() {
+      return { active: false, title: this.props.title };
+    },
+
+    mounted() {},
+
+    updated() {
+      if (this.props.title !== this.state.title) {
+        this.setState({ title: this.props.title, active: true });
+      }
+    },
+
+    render() {
+      if (!this.state.active) return;
+      return (
+        <div>
+          <h1>{this.state.title}</h1>
+          <h2>{this.children}</h2>
+        </div>
+      );
+    }
+  };
+
+  var Intermediate = {
+    render() {
+      return (
+        <main>
+          <div>{this.children}</div>
+        </main>
+      );
+    }
+  };
+
+  var App = {
+    data() {
+      return { title: "title", msg: "msg" };
+    },
+
+    render() {
+      ctx = this;
+      return (
+        <div>
+          <Intermediate>
+            <Destination title={this.state.title}>{this.state.msg}</Destination>
+          </Intermediate>
+        </div>
+      );
+    }
+  };
+
+  var el = render(App, document.body);
+  t.deepEqual(el.textContent, "");
+
+  ctx.setState({ title: "working" });
+  await sleep(250); // bc of update being called AFTER into DOM
+  t.deepEqual(el.textContent, "workingmsg");
 });
