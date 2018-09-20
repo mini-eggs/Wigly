@@ -5,8 +5,6 @@ let React = { createElement: h }; // because jsx reasons
 
 require("browser-env")();
 
-var sleep = (t = 1) => new Promise(r => setTimeout(r, t));
-
 test("'Hello, World!' - part one", async t => {
   let HelloWorld = {
     render: () => ({ children: "Hello, World!" })
@@ -743,8 +741,6 @@ test("Deep and nested children will update correctly.", async t => {
       return { active: false, title: this.props.title };
     },
 
-    mounted() {},
-
     updated() {
       if (this.props.title !== this.state.title) {
         this.setState({ title: this.props.title, active: true });
@@ -793,6 +789,5 @@ test("Deep and nested children will update correctly.", async t => {
   t.deepEqual(el.textContent, "");
 
   ctx.setState({ title: "working" });
-  await sleep(250); // bc of update being called AFTER into DOM
   t.deepEqual(el.textContent, "workingmsg");
 });

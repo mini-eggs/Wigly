@@ -196,6 +196,8 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     };
 
     var childCallback = (key, el, that, vdom, childCtx) => {
+      // For the case of intermediate components that do not touch children.
+      parentCallback && parentCallback(key, el, that, vdom, childCtx);
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
 
@@ -220,9 +222,16 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
           return renderedChild["ctx"]()["state"];
         }
       }
+
+      return getSeedState && getSeedState(that);
     };
 
-    return (lastVDOM = transformer(patcher, { ...render.call(ctx()), ["lifecycle"]: lifecycle }, childCallback, null));
+    return (lastVDOM = transformer(
+      patcher,
+      { ...render.call(ctx()), ["lifecycle"]: lifecycle },
+      childCallback,
+      getSeedState ? findChildSeedState : null
+    ));
   }
 
   // ensure children are arr
