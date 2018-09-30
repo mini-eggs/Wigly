@@ -1,44 +1,46 @@
 import test from "ava";
-import { h, render } from "../dist/es6";
+import { h, component, render } from "../";
 
-let React = { createElement: h }; // because jsx reasons
+var React = { createElement: h }; // for jsx
 
 require("browser-env")();
 
 test("'Hello, World!' - part one", async t => {
-  let HelloWorld = {
+  var HelloWorld = component({
     render: () => ({ children: "Hello, World!" })
-  };
+  });
 
-  let el = render(HelloWorld, document.body);
+  var el = render(HelloWorld, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
 test("Ensure prop updates happen everywhere", async t => {
-  let childCtx;
-  let parentCtx;
+  var childCtx;
+  var parentCtx;
 
-  let Child = {
+  var Child = component({
     tester() {
       return this.props.title;
     },
+
     render() {
       childCtx = this;
       return { children: [{ children: this.props.title }] };
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return { title: "Hello, World!" };
     },
+
     render() {
       parentCtx = this;
-      return { children: [{ tag: Child, title: this.state.title }] };
+      return { children: [Child({ title: this.state.title })] };
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 
   parentCtx.setState(() => ({ title: "Hello, Twitter!" }));
@@ -47,122 +49,124 @@ test("Ensure prop updates happen everywhere", async t => {
 });
 
 test("Nully render", async t => {
-  let Child = {
+  var Child = component({
     render() {
       return null;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     render() {
-      return { children: [{ tag: Child }] };
+      return { children: [Child()] };
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 
-  Parent = {
+  Parent = component({
     render() {
       return { children: [null] };
     }
-  };
+  });
 
   el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 });
 
 test("Falsies render", async t => {
-  let Child = {
+  var Child = component({
     render() {
       return false;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     render() {
-      return { children: [{ tag: Child }] };
+      return { children: [Child()] };
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 
-  Parent = {
+  Parent = component({
     render() {
       return { children: [false] };
     }
-  };
+  });
 
   el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 });
 
 test("Passing children works through intermediate components.", async t => {
-  let Child = {
+  var Child = component({
     render() {
-      return { children: this.children };
+      return { children: this.props.children };
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     render() {
-      return { tag: Child, children: ["here", "we", "go"] };
+      return Child({ children: ["here", "we", "go"] });
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
 });
 
 test("Passing children works through intermediate components with jsx.", async t => {
-  let Child = {
+  var Child = component({
     render() {
-      return <div>{this.children}</div>;
+      return <div>{this.props.children}</div>;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     render() {
       return <Child>Here we go</Child>;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Here we go");
 });
 
 test("Lifecyles work as expected", async t => {
-  let mountCount = 0;
+  var mountCount = 0;
 
-  let Child = {
+  var Child = component({
     mounted() {
       mountCount++;
     },
+
     render() {
       return <div>testing</div>;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     mounted() {
       mountCount++;
     },
+
     render() {
       return <Child />;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "testing");
   t.deepEqual(mountCount, 2);
 });
 
 test("Child components don't keep stale state.", async t => {
-  let parentCtx;
-  let childCtx;
+  var parentCtx;
+  var childCtx;
 
-  let Child = {
+  var Child = component({
     data() {
       return { name: "World" };
     },
@@ -171,9 +175,9 @@ test("Child components don't keep stale state.", async t => {
       childCtx = this;
       return <div>Hello, {this.state.name}!</div>;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return { active: true };
     },
@@ -191,9 +195,9 @@ test("Child components don't keep stale state.", async t => {
         </div>
       );
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 
   childCtx.setState(() => ({ name: "Twitter" }));
@@ -207,36 +211,36 @@ test("Child components don't keep stale state.", async t => {
 });
 
 test("Data hook has props and children set correctly.", async t => {
-  let data;
+  var data;
 
-  let Child = {
+  var Child = component({
     data() {
       data = this;
     },
     render() {
       return (
         <div>
-          {this.props.greeting}, {this.children}
+          {this.props.greeting}, {this.props.children}
         </div>
       );
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     render() {
       return <Child greeting="Hello">World!</Child>;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
-  t.deepEqual(data, { props: { greeting: "Hello" }, children: ["World!"] });
+  t.deepEqual(data, { props: { greeting: "Hello", children: ["World!"] } });
 });
 
 test("Ensure mounted setState updates state", async t => {
-  let test;
+  var test;
 
-  let Child = {
+  var Child = component({
     data() {
       return { cb: false };
     },
@@ -252,9 +256,9 @@ test("Ensure mounted setState updates state", async t => {
     render() {
       return <div>Hello, World!</div>;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return { active: true };
     },
@@ -266,17 +270,17 @@ test("Ensure mounted setState updates state", async t => {
     render() {
       return <div>{this.state.active && <Child />}</div>;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "");
   t.deepEqual(test, "Hello, Twitter!");
 });
 
 test("Mapping props item stays consistent in DOM.", async t => {
-  let parentCtx;
+  var parentCtx;
 
-  let Child = {
+  var Child = component({
     render() {
       return (
         <div>
@@ -286,9 +290,9 @@ test("Mapping props item stays consistent in DOM.", async t => {
         </div>
       );
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return {
         items: [{ title: "here" }, { title: "we" }, { title: "go" }],
@@ -300,9 +304,9 @@ test("Mapping props item stays consistent in DOM.", async t => {
       parentCtx = this;
       return <div>{this.state.active && <Child items={this.state.items} />}</div>;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
 
   parentCtx.setState(() => ({ active: false }));
@@ -310,17 +314,17 @@ test("Mapping props item stays consistent in DOM.", async t => {
 });
 
 test("Children with conditional renders are removed from DOM properly.", t => {
-  let childOneCtx;
-  let childTwoCtx;
-  let parentCtx;
+  var childOneCtx;
+  var childTwoCtx;
+  var parentCtx;
 
-  let DeepChild = {
+  var DeepChild = component({
     render() {
       return <div>here we go</div>;
     }
-  };
+  });
 
-  let ChildOne = {
+  var ChildOne = component({
     data() {
       return { active: false };
     },
@@ -334,22 +338,22 @@ test("Children with conditional renders are removed from DOM properly.", t => {
         </div>
       );
     }
-  };
+  });
 
-  let ChildTwo = {
+  var ChildTwo = component({
     render() {
       childTwoCtx = this;
       return <div>Child Two</div>;
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return { component: ChildOne, name: "ChildOne" };
     },
 
     render() {
-      let Curr = this.state.component;
+      var Curr = this.state.component;
       parentCtx = this;
       return (
         <div>
@@ -357,9 +361,9 @@ test("Children with conditional renders are removed from DOM properly.", t => {
         </div>
       );
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Child One");
 
   parentCtx.setState(() => ({ component: ChildTwo, name: "ChildTwo" }));
@@ -377,12 +381,12 @@ test("Children with conditional renders are removed from DOM properly.", t => {
 });
 
 test("setState and callback after mount works as expected", async t => {
-  let parentCtx;
-  let childCtx;
-  let root;
+  var parentCtx;
+  var childCtx;
+  var root;
 
-  let promise = new Promise(resolve => {
-    let Child = {
+  var promise = new Promise(resolve => {
+    var Child = component({
       data() {
         return { count: 0 };
       },
@@ -405,9 +409,9 @@ test("setState and callback after mount works as expected", async t => {
           </div>
         );
       }
-    };
+    });
 
-    let Parent = {
+    var Parent = component({
       data() {
         return { count: 0 };
       },
@@ -416,7 +420,7 @@ test("setState and callback after mount works as expected", async t => {
         parentCtx = this;
         return <Child count={this.state.count} />;
       }
-    };
+    });
 
     root = render(Parent, document.body);
   });
@@ -425,79 +429,52 @@ test("setState and callback after mount works as expected", async t => {
 
   parentCtx.setState(() => ({ count: 1 }));
 
-  let { el, ctx } = await promise;
+  var { el, ctx } = await promise;
   t.deepEqual(el.textContent, "1 - 1");
-  t.deepEqual(ctx.props, { count: 1 });
+  t.deepEqual(ctx.props, { count: 1, children: [] });
   t.deepEqual(ctx.state, { count: 1 });
 });
 
 test("Swapping children works as expected.", t => {
-  let ctx;
+  var ctx;
 
-  let One = {
+  var One = component({
     render: () => ({ children: "test 1" })
-  };
+  });
 
-  let Two = {
+  var Two = component({
     render: () => ({ children: "test 2" })
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data: () => ({ component: One }),
     render() {
       ctx = this;
       return <this.state.component />;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "test 1");
 
   ctx.setState(() => ({ component: Two }));
   t.deepEqual(el.textContent, "test 2");
 });
 
-test("Falsy values are renderd as comments.", t => {
-  let Parent = {
+test("Falsy values are rendered as comments.", t => {
+  var Parent = component({
     render: () => <div>{false}</div>
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.nodeName.toUpperCase(), "DIV");
   t.deepEqual(el.innerHTML, "<!---->");
 });
 
-// test("Hydration works as expected.", t => {
-//   document.body.innerHTML = "<div>This is a triumph.</div>";
-
-//   let App = ({
-//     render: () => <div>This is a triumph.</div>
-//   });
-
-//   let el = hydrate(App, document.body);
-//   t.deepEqual(el.textContent, "This is a triumph.");
-//   t.deepEqual(document.body.innerHTML, "<div>This is a triumph.</div>");
-// });
-
-// test("Hydration mount hook is called.", t => {
-//   let mounted = false;
-//   document.body.innerHTML = "<div>This is a triumph.</div>";
-
-//   let App = ({
-//     mounted: () => (mounted = true),
-//     render: () => <div>This is a triumph.</div>
-//   });
-
-//   let el = hydrate(App, document.body);
-//   t.deepEqual(el.textContent, "This is a triumph.");
-//   t.deepEqual(document.body.innerHTML, "<div>This is a triumph.</div>");
-//   t.deepEqual(true, mounted);
-// });
-
 test("Updates work as expected with parent setState.", t => {
-  let ctx;
+  var ctx;
 
-  let Child = {
+  var Child = component({
     data() {
       return {
         items: [
@@ -524,9 +501,9 @@ test("Updates work as expected with parent setState.", t => {
         </div>
       );
     }
-  };
+  });
 
-  let Parent = {
+  var Parent = component({
     data() {
       return { val: 0 };
     },
@@ -538,9 +515,9 @@ test("Updates work as expected with parent setState.", t => {
     render() {
       return <Child oninput={this.handleUpdate} />;
     }
-  };
+  });
 
-  let el = render(Parent, document.body);
+  var el = render(Parent, document.body);
   t.deepEqual(el.querySelectorAll(".active").length, 0);
 
   ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: true })) }), ctx.afterUpdate);
@@ -551,17 +528,17 @@ test("Updates work as expected with parent setState.", t => {
 });
 
 test("Both types of setStates work.", t => {
-  let ctx;
+  var ctx;
 
-  let app = {
+  var app = component({
     data: () => ({ name: "Evan" }),
     render() {
       ctx = this;
       return <div>Hello, my name is {this.state.name}.</div>;
     }
-  };
+  });
 
-  let el = render(app, document.body);
+  var el = render(app, document.body);
   t.deepEqual(el.textContent, "Hello, my name is Evan.");
 
   ctx.setState({ name: "Joba" });
@@ -572,13 +549,13 @@ test("Both types of setStates work.", t => {
 });
 
 test("Hello, Twitter!", t => {
-  var Child = {
+  var Child = component({
     render() {
       return <div>This is a {this.props.title} =-D</div>;
     }
-  };
+  });
 
-  var App = {
+  var App = component({
     data() {
       return { title: "triumph" };
     },
@@ -586,7 +563,7 @@ test("Hello, Twitter!", t => {
     render() {
       return <Child {...this.state} />;
     }
-  };
+  });
 
   var el = render(App, document.body);
   t.deepEqual(el.textContent, "This is a triumph =-D");
@@ -597,21 +574,22 @@ test("Hello, Twitter!", t => {
  */
 
 test("Example: higher order components", t => {
-  var withName = Component => ({
-    data() {
-      return { name: "Evan" };
-    },
+  var withName = Component =>
+    component({
+      data() {
+        return { name: "Evan" };
+      },
 
-    render() {
-      return <Component {...this.state} />;
-    }
-  });
+      render() {
+        return <Component {...this.state} />;
+      }
+    });
 
-  var Example = {
+  var Example = component({
     render() {
       return <div>My name is {this.props.name}</div>;
     }
-  };
+  });
 
   var ExampleWithName = withName(Example);
 
@@ -620,23 +598,23 @@ test("Example: higher order components", t => {
 });
 
 test("Example: render props", t => {
-  var Name = {
+  var Name = component({
     data() {
       return { name: "Evan" };
     },
 
     render() {
       // we only care about the first child for this example
-      var f = this.children[0];
+      var f = this.props.children[0];
       return f(this.state);
     }
-  };
+  });
 
-  var Example = {
+  var Example = component({
     render() {
       return <Name>{({ name }) => <div>My name is {name}</div>}</Name>;
     }
-  };
+  });
 
   var el = render(Example, document.body);
   t.deepEqual(el.textContent, "My name is Evan");
@@ -660,7 +638,7 @@ test("Example: mixin", t => {
     }
   };
 
-  var Form = {
+  var Form = component({
     ...FormMixin,
 
     data() {
@@ -681,7 +659,7 @@ test("Example: mixin", t => {
         </form>
       );
     }
-  };
+  });
 
   render(Form, document.body);
   t.deepEqual(ctx.state, { fname: "", lname: "" });
@@ -693,19 +671,19 @@ test("Example: mixin", t => {
 });
 
 test("Deep children behave properly.", t => {
-  var One = {
+  var One = component({
     render() {
       return <button onclick={this.props.onclick} />;
     }
-  };
+  });
 
-  var Two = {
+  var Two = component({
     render() {
-      return <div>{this.children}</div>;
+      return <div>{this.props.children}</div>;
     }
-  };
+  });
 
-  var Three = {
+  var Three = component({
     data() {
       return { click: 0 };
     },
@@ -724,7 +702,7 @@ test("Deep children behave properly.", t => {
         </div>
       );
     }
-  };
+  });
 
   var el = render(Three, document.body);
   t.deepEqual(el.textContent, "Click Count: 0");
@@ -736,7 +714,7 @@ test("Deep children behave properly.", t => {
 test("Deep and nested children will update correctly.", async t => {
   var ctx;
 
-  var Destination = {
+  var Destination = component({
     data() {
       return { active: false, title: this.props.title };
     },
@@ -752,23 +730,23 @@ test("Deep and nested children will update correctly.", async t => {
       return (
         <div>
           <h1>{this.state.title}</h1>
-          <h2>{this.children}</h2>
+          <h2>{this.props.children}</h2>
         </div>
       );
     }
-  };
+  });
 
-  var Intermediate = {
+  var Intermediate = component({
     render() {
       return (
         <main>
-          <div>{this.children}</div>
+          <div>{this.props.children}</div>
         </main>
       );
     }
-  };
+  });
 
-  var App = {
+  var App = component({
     data() {
       return { title: "title", msg: "msg" };
     },
@@ -783,11 +761,33 @@ test("Deep and nested children will update correctly.", async t => {
         </div>
       );
     }
-  };
+  });
 
   var el = render(App, document.body);
   t.deepEqual(el.textContent, "");
 
   ctx.setState({ title: "working" });
   t.deepEqual(el.textContent, "workingmsg");
+});
+
+test("Breaking change for enabling typed (ts) components.", t => {
+  var Child = component({
+    render() {
+      return (
+        <div>
+          {this.props.hi}, {this.props.children}!
+        </div>
+      );
+    }
+  });
+
+  var Parent = component({
+    render() {
+      // or without jsx: return Child({ hi:"Hi", children: "Evan" })
+      return <Child hi="Hi">Evan</Child>;
+    }
+  });
+
+  var el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "Hi, Evan!");
 });

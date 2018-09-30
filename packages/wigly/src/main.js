@@ -6,15 +6,13 @@ var special = {
   ["tag"]: true,
   ["key"]: true,
   ["lifecycle"]: true,
-  ["children"]: true,
+  // ["children"]: true,
   ["data"]: true,
   ["mounted"]: true,
   ["updated"]: true,
   ["destroyed"]: true,
   ["render"]: true
 };
-
-export var h = (tag, attr, ...children) => ({ tag, ...attr, children: [].concat.apply([], children) });
 
 var lifecyleWrapper = (node, lc, el) => {
   node["lifecycle"] && node["lifecycle"][lc] && node["lifecycle"][lc](el);
@@ -156,7 +154,6 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     var data = inst["data"];
     var renderedChildren = [];
     var render = inst["render"];
-    var children = tree["children"] || [];
     var state = getSeedState && getSeedState(tree);
     var methods = Object.keys(inst).reduce((t, k) => (special[k] ? t : { ...t, [k]: inst[k] }), {});
     var lifecycle = { ["mounted"]: inst["mounted"], ["updated"]: inst["updated"], ["destroyed"]: inst["destroyed"] };
@@ -166,8 +163,8 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     for (var key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     var ctx = () => {
-      var partial = { ["props"]: props, ["children"]: children, ...methods };
-      !state && data && (state = data.call(partial));
+      var partial = { ["props"]: props, ...methods };
+      !state && (state = data ? data.call(partial) : {});
       return { ["state"]: state, ["setState"]: setState, ...partial };
     };
 
@@ -247,6 +244,13 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   };
 };
 
-export var render = (raw, container, patcher = patch) => {
-  return patcher(container, undefined, undefined, transformer(patcher, { ["tag"]: raw }, null, null));
+export var render = (root, container, patcher = patch) => {
+  return patcher(container, undefined, undefined, transformer(patcher, root(), null, null));
+};
+
+export var component = tag => props => ({ tag, ...props });
+
+export var h = (f, props, ...children) => {
+  children = [].concat.apply([], children); // flat
+  return typeof f === "function" ? f({ ...props, children }) : { tag: f, ...props, children };
 };

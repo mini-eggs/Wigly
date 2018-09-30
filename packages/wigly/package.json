@@ -3,7 +3,7 @@
   "main": "dist/es5.js",
   "version": "0.1.10",
   "scripts": {
-    "start": "npm run clean && npm run es5 && npm run es6 && npm run types && npm run gzip",
+    "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip && npm run types",
     "clean": "rm -rf dist",
     "es5": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
     "es6": "node_modules/google-closure-compiler-linux/compiler --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
@@ -16,7 +16,9 @@
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
-    "google-closure-compiler-linux": "^20180805.0.0"
+    "google-closure-compiler-linux": "^20180805.0.0",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.1.1"
   },
   "ava": {
     "babel": {
@@ -25,7 +27,14 @@
           "@babel/preset-react"
         ]
       }
-    }
+    },
+    "compileEnhancements": false,
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
   },
   "keywords": [
     "ui",
