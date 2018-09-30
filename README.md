@@ -23,11 +23,11 @@ ES5 'Hello, World!'
 <body></body>
 <script src="//unpkg.com/wigly"></script>
 <script>
-    var App = wigly.component({
+    var App = {
         render: function() {
             return { children: "This is a triumph." };
         }
-    });
+    };
 
     wigly.render(App, document.body);
 </script>
@@ -36,13 +36,14 @@ ES5 'Hello, World!'
 JSX 'Hello, World!'
 
 ```javascript
-import { h, component, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
-let App = component({
+let App = {
   render() {
     return <div>This is a triumph.</div>;
   }
-});
+};
 
 render(App, document.body);
 ```
@@ -50,7 +51,9 @@ render(App, document.body);
 TypeScript 'Hello, World!'
 
 ```typescript
-import { h, component, render, IComponent } from "wigly";
+import { render } from "wigly";
+import { component, IComponent } from "wigly-component"; // Allows us better type hints.
+import { h } from "wigly-jsx";
 
 var Child: IComponent<{ greeting: string }, { name: string }> = component({
   data() {
@@ -66,7 +69,7 @@ var Child: IComponent<{ greeting: string }, { name: string }> = component({
   }
 });
 
-var Parent: IComponent<{}, {}> = component({
+var App: IComponent<{}, {}> = component({
   data() {
     return {};
   },
@@ -76,16 +79,16 @@ var Parent: IComponent<{}, {}> = component({
   }
 });
 
-var el = render(Parent, document.body);
-t.deepEqual(el.textContent, "Hi, Evan!");
+render(App, document.body);
 ```
 
 State, props, children, and events.
 
 ```javascript
-import { h, component, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
-let InputContainer = component({
+let InputContainer = {
   data() {
     return { name: "" }; // initial state
   },
@@ -105,13 +108,13 @@ let InputContainer = component({
       </div>
     );
   }
-});
+};
 
-let App = component({
+let App = {
   render() {
     return <InputContainer title="Please enter your name below.">Your name is</InputContainer>;
   }
-});
+};
 
 render(App, document.body);
 ```
@@ -119,9 +122,10 @@ render(App, document.body);
 #### Lifecycles.
 
 ```javascript
-import { h, component, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
-let App = component({
+let App = {
   mounted(el) {
     // called after component has entered DOM.
   },
@@ -138,7 +142,7 @@ let App = component({
   render() {
     return <div>This is a triumph.</div>;
   }
-});
+};
 
 render(App, document.body);
 ```
@@ -150,24 +154,24 @@ There's a few common ways you can build abstractions with Wigly. Higher order co
 #### Higher order components
 
 ```javascript
-import { h, component, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
-var withName = Component =>
-  component({
-    data() {
-      return { name: "Evan" };
-    },
+var withName = Component => ({
+  data() {
+    return { name: "Evan" };
+  },
 
-    render() {
-      return <Component {...this.state} {...this.props} />;
-    }
-  });
+  render() {
+    return <Component {...this.state} {...this.props} />;
+  }
+});
 
-var Example = component({
+var Example = {
   render() {
     return <div>My name is {this.props.name}</div>;
   }
-});
+};
 
 var ExampleWithName = withName(Example);
 
@@ -177,9 +181,10 @@ render(ExampleWithName, document.body);
 #### Render props
 
 ```javascript
-import { h, component, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
-var Name = component({
+var Name = {
   data() {
     return { name: "Evan" };
   },
@@ -188,13 +193,13 @@ var Name = component({
     var f = this.props.children[0];
     return f(this.state);
   }
-});
+};
 
-var Example = component({
+var Example = {
   render() {
     return <Name>{({ name }) => <div>My name is {name}</div>}</Name>;
   }
-});
+};
 
 render(Example, document.body);
 ```
@@ -202,7 +207,8 @@ render(Example, document.body);
 #### Mixins
 
 ```javascript
-import { h, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 
 var FormMixin = {
   update(key) {
@@ -219,7 +225,7 @@ var FormMixin = {
   }
 };
 
-var Form = component({
+var Form = {
   ...FormMixin,
 
   data() {
@@ -239,7 +245,7 @@ var Form = component({
       </form>
     );
   }
-});
+};
 
 render(Form, document.body);
 ```
