@@ -19,7 +19,7 @@ var lifecyleWrapper = (node, lc, el) => {
 };
 
 var updateAttribute = (element, name, value, old) => {
-  if (name === "key") {
+  if (name === "key" || name === "children") {
   } else if (name === "value") {
     element[name] = value;
   } else if (name === "style") {
@@ -231,8 +231,7 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   }
 
   // ensure children are arr
-  var children = tree["children"] || [];
-  isSimple(children) && (children = [children]);
+  var children = isSimple(tree["children"]) ? [tree["children"]] : tree["children"] || [];
 
   return {
     ["tag"]: tree["tag"] || "div",
