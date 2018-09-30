@@ -1,6 +1,3 @@
-type falsy = undefined | null | false;
-type vdom = Function | RenderStruct | string;
-
 interface RenderStruct {
   readonly tag?: Readonly<IComponent<any, any>> | string;
   readonly children?: Readonly<Array<Readonly<RenderStruct>>> | string;
@@ -22,14 +19,13 @@ interface Instance<Props, State> {
   readonly updated?: (this: Context<Props, State>, el: HTMLElement) => void;
   readonly destroyed?: (this: Context<Props, State>, el: HTMLElement) => void;
   readonly [key: string]: ((this: Context<Props, State>, any) => any);
-  readonly render: (this: Context<Props, State>) => RenderStruct | falsy;
+  readonly render: (this: Context<Props, State>) => RenderStruct | undefined | null | false;
 }
 
-export declare interface IComponent<Props, State> {
+declare interface IComponent<Props, State> {
   (props: Props): Instance<Props, State>;
 }
 
-export declare function h(tag: vdom, attr: object, ...children: Array<vdom>): RenderStruct;
-export declare function component<Props, State>(sig: Instance<Props, State>): (props: Props) => Instance<Props, State>;
 export declare function render(root: IComponent<{}, {}>, container: HTMLElement): HTMLElement;
+
 export {};

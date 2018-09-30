@@ -1,0 +1,29 @@
+{
+  "name": "wigly-types",
+  "version": "0.1.14",
+  "scripts": {
+    "start": "npm-run-all -p start:wigly-component start:wigly-jsx start:wigly",
+    "start:wigly-component": "cp src/wigly-component.d.ts ../wigly-component/dist/es5.d.ts && cp src/wigly-component.d.ts ../wigly-component/dist/es6.d.ts",
+    "start:wigly-jsx": "cp src/wigly-jsx.d.ts ../wigly-jsx/dist/es5.d.ts && cp src/wigly-jsx.d.ts ../wigly-jsx/dist/es6.d.ts",
+    "start:wigly": "cp src/wigly.d.ts ../wigly/dist/es5.d.ts && cp src/wigly.d.ts ../wigly/dist/es6.d.ts"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.3",
+    "typescript": "^3.1.1"
+  },
+  "homepage": "https://github.com/mini-eggs/wigly",
+  "bugs": "https://github.com/mini-eggs/wigly/issues",
+  "license": "MIT",
+  "repository": "https://github.com/mini-eggs/wigly",
+  "keywords": [
+    "ui",
+    "component",
+    "reactive",
+    "frontend",
+    "jsx",
+    "vdom",
+    "virtual-dom",
+    "declarative",
+    "framework"
+  ]
+}

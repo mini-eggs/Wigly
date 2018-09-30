@@ -21,7 +21,7 @@ ES5 'Hello, World!'
 
 ```html
 <body></body>
-<script src="//unpkg.com/wigly@latest"></script>
+<script src="//unpkg.com/wigly"></script>
 <script>
     var App = wigly.component({
         render: function() {

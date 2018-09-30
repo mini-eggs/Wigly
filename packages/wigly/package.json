@@ -3,11 +3,10 @@
   "main": "dist/es5.js",
   "version": "0.1.14",
   "scripts": {
-    "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip && npm run types",
+    "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip",
     "clean": "rm -rf dist",
     "es5": "node_modules/google-closure-compiler-linux/compiler --isolation_mode IIFE --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
     "es6": "node_modules/google-closure-compiler-linux/compiler --isolation_mode IIFE --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
-    "types": "cp types/main.d.ts dist/es5.d.ts && cp types/main.d.ts dist/es6.d.ts",
     "gzip": "gzip dist/* -k -f",
     "test": "ava",
     "size": "wc -c dist/es6.js.gz | cut -d' ' -f1"
@@ -38,7 +37,8 @@
     },
     "compileEnhancements": false,
     "extensions": [
-      "ts"
+      "ts",
+      "tsx"
     ],
     "require": [
       "ts-node/register"
