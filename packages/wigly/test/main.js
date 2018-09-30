@@ -1,5 +1,7 @@
 import test from "ava";
-import { h, component, render } from "../";
+import { render } from "../";
+import { component } from "wigly-component";
+import { h } from "wigly-jsx";
 
 var React = { createElement: h }; // for jsx
 

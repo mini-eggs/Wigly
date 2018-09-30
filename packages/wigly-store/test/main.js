@@ -1,8 +1,5 @@
 import test from "ava";
-import { h } from "wigly";
 import { createStore } from "../";
-
-let React = { createElement: h }; // because jsx reasons
 
 /**
  * Initial states and switches.

@@ -1,5 +1,5 @@
 import test from "ava";
-import { h } from "wigly";
+import { h } from "wigly-jsx";
 import render from "../";
 
 let React = { createElement: h }; // because jsx reasons

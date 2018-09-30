@@ -1,5 +1,6 @@
 import test from "ava";
-import { component, render } from "wigly";
+import { render } from "wigly";
+import { component } from "wigly-component";
 import { dom } from "../";
 
 require("browser-env")();

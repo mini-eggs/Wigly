@@ -247,13 +247,6 @@ export var render = (root, container, patcher = patch) => {
     container,
     undefined,
     undefined,
-    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, null, null) // To avoid breaking change from TypeScript support
+    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, null, null) // To support vanilla wigly and component wigly
   );
-};
-
-export var component = tag => props => ({ tag, ...props });
-
-export var h = (f, props, ...children) => {
-  children = [].concat.apply([], children); // flat
-  return typeof f === "function" ? f({ ...props, children }) : { tag: f, ...props, children };
 };

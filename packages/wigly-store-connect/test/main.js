@@ -1,5 +1,6 @@
 import test from "ava";
-import { h, render } from "wigly";
+import { render } from "wigly";
+import { h } from "wigly-jsx";
 import { createStore } from "wigly-store";
 import { createConnector } from "../";
 
