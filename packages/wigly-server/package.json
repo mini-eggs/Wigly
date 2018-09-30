@@ -1,7 +1,7 @@
 {
   "name": "wigly-server",
   "main": "src/main.js",
-  "version": "0.1.14",
+  "version": "0.1.15-alpha.0",
   "scripts": {
     "test": "ava"
   },
@@ -12,8 +12,8 @@
   "devDependencies": {
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
-    "wigly": "^0.1.x",
-    "wigly-jsx": "^0.1.x"
+    "wigly": "^0.1.15-alpha.0",
+    "wigly-jsx": "^0.1.15-alpha.0"
   },
   "ava": {
     "babel": {

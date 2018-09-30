@@ -1,7 +1,7 @@
 {
   "name": "wigly",
   "main": "dist/es5.js",
-  "version": "0.1.14",
+  "version": "0.1.15-alpha.0",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip",
     "clean": "rm -rf dist",
@@ -13,19 +13,19 @@
   },
   "peerDependencies": {
     "wigly-component": "^0.1.x",
-    "wigly-jsx": "^0.1.x",
-    "wigly-dom": "^0.1.x"
+    "wigly-dom": "^0.1.x",
+    "wigly-jsx": "^0.1.x"
   },
   "devDependencies": {
-    "wigly-component": "^0.1.x",
-    "wigly-jsx": "^0.1.x",
-    "wigly-dom": "^0.1.x",
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "^20180805.0.0",
     "ts-node": "^7.0.1",
-    "typescript": "^3.1.1"
+    "typescript": "^3.1.1",
+    "wigly-component": "^0.1.15-alpha.0",
+    "wigly-dom": "^0.1.15-alpha.0",
+    "wigly-jsx": "^0.1.15-alpha.0"
   },
   "ava": {
     "babel": {
