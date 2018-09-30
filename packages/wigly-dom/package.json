@@ -1,7 +1,7 @@
 {
   "name": "wigly-dom",
   "main": "dist/es5.js",
-  "version": "0.1.15-alpha.0",
+  "version": "0.1.15",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip",
     "clean": "rm -rf dist",
@@ -19,8 +19,8 @@
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "^20180805.0.0",
-    "wigly": "^0.1.15-alpha.0",
-    "wigly-component": "^0.1.15-alpha.0"
+    "wigly": "^0.1.15",
+    "wigly-component": "^0.1.15"
   },
   "ava": {
     "babel": {
