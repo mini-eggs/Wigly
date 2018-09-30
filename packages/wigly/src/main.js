@@ -6,7 +6,6 @@ var special = {
   ["tag"]: true,
   ["key"]: true,
   ["lifecycle"]: true,
-  // ["children"]: true,
   ["data"]: true,
   ["mounted"]: true,
   ["updated"]: true,
@@ -245,7 +244,12 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
 };
 
 export var render = (root, container, patcher = patch) => {
-  return patcher(container, undefined, undefined, transformer(patcher, root(), null, null));
+  return patcher(
+    container,
+    undefined,
+    undefined,
+    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, null, null) // To avoid breaking change from TypeScript support
+  );
 };
 
 export var component = tag => props => ({ tag, ...props });

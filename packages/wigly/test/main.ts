@@ -5,17 +5,7 @@ import { component, render, IComponent } from "../dist/es6";
 require("browser-env")();
 
 test("Typed components work as expected.", t => {
-  interface ChildProps {
-    greeting: string;
-  }
-
-  interface ChildState {
-    name: string;
-  }
-
-  console.log("HERE WE GO 1");
-
-  var Child: IComponent<ChildProps, ChildState> = component({
+  var Child: IComponent<{ greeting: string }, { name: string }> = component({
     data() {
       return { name: "Evan" };
     },
@@ -24,8 +14,6 @@ test("Typed components work as expected.", t => {
       return { children: `${this.props.greeting}, ${this.state.name}!` };
     }
   });
-
-  console.log("HERE WE GO 2");
 
   var Parent: IComponent<{}, {}> = component({
     data() {
@@ -36,8 +24,6 @@ test("Typed components work as expected.", t => {
       return Child({ greeting: "Hi" });
     }
   });
-
-  console.log("HERE WE GO 3");
 
   var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Hi, Evan!");

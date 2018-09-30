@@ -23,11 +23,11 @@ ES5 'Hello, World!'
 <body></body>
 <script src="//unpkg.com/wigly@latest"></script>
 <script>
-    var App = {
+    var App = wigly.component({
         render: function() {
             return { children: "This is a triumph." };
         }
-    }
+    });
 
     wigly.render(App, document.body);
 </script>
@@ -36,23 +36,56 @@ ES5 'Hello, World!'
 JSX 'Hello, World!'
 
 ```javascript
-import { h, render } from "wigly";
+import { h, component, render } from "wigly";
 
-let App = {
+let App = component({
   render() {
     return <div>This is a triumph.</div>;
   }
-};
+});
 
 render(App, document.body);
+```
+
+TypeScript 'Hello, World!'
+
+```typescript
+import { h, component, render, IComponent } from "wigly";
+
+var Child: IComponent<{ greeting: string }, { name: string }> = component({
+  data() {
+    return { name: "Evan" };
+  },
+
+  render() {
+    return (
+      <div>
+        {this.props.greeting}, {this.state.name}!
+      </div>
+    );
+  }
+});
+
+var Parent: IComponent<{}, {}> = component({
+  data() {
+    return {};
+  },
+
+  render() {
+    return <Child greeting="Hi" />;
+  }
+});
+
+var el = render(Parent, document.body);
+t.deepEqual(el.textContent, "Hi, Evan!");
 ```
 
 State, props, children, and events.
 
 ```javascript
-import { h, render } from "wigly";
+import { h, component, render } from "wigly";
 
-let InputContainer = {
+let InputContainer = component({
   data() {
     return { name: "" }; // initial state
   },
@@ -66,19 +99,19 @@ let InputContainer = {
       <div>
         <h1>{this.props.title}</h1>
         <h2>
-          {this.children}: {this.state.name || "____"}
+          {this.props.children}: {this.state.name || "____"}
         </h2>
         <input oninput={this.handleInput} />
       </div>
     );
   }
-};
+});
 
-let App = {
+let App = component({
   render() {
     return <InputContainer title="Please enter your name below.">Your name is</InputContainer>;
   }
-};
+});
 
 render(App, document.body);
 ```
@@ -86,9 +119,9 @@ render(App, document.body);
 #### Lifecycles.
 
 ```javascript
-import { h, render } from "wigly";
+import { h, component, render } from "wigly";
 
-let App = {
+let App = component({
   mounted(el) {
     // called after component has entered DOM.
   },
@@ -105,7 +138,7 @@ let App = {
   render() {
     return <div>This is a triumph.</div>;
   }
-};
+});
 
 render(App, document.body);
 ```
@@ -117,27 +150,24 @@ There's a few common ways you can build abstractions with Wigly. Higher order co
 #### Higher order components
 
 ```javascript
-import { h, render } from "wigly";
+import { h, component, render } from "wigly";
 
-var withName = Component => ({
-  data() {
-    return { name: "Evan" };
-  },
+var withName = Component =>
+  component({
+    data() {
+      return { name: "Evan" };
+    },
 
-  render() {
-    return (
-      <Component {...this.state} {...this.props}>
-        {this.children}
-      </Component>
-    );
-  }
-});
+    render() {
+      return <Component {...this.state} {...this.props} />;
+    }
+  });
 
-var Example = {
+var Example = component({
   render() {
     return <div>My name is {this.props.name}</div>;
   }
-};
+});
 
 var ExampleWithName = withName(Example);
 
@@ -147,24 +177,24 @@ render(ExampleWithName, document.body);
 #### Render props
 
 ```javascript
-import { h, render } from "wigly";
+import { h, component, render } from "wigly";
 
-var Name = {
+var Name = component({
   data() {
     return { name: "Evan" };
   },
 
   render() {
-    var f = this.children[0]; /* we only care about this first child in this example */
+    var f = this.props.children[0];
     return f(this.state);
   }
-};
+});
 
-var Example = {
+var Example = component({
   render() {
     return <Name>{({ name }) => <div>My name is {name}</div>}</Name>;
   }
-};
+});
 
 render(Example, document.body);
 ```
@@ -189,7 +219,7 @@ var FormMixin = {
   }
 };
 
-var Form = {
+var Form = component({
   ...FormMixin,
 
   data() {
@@ -209,7 +239,7 @@ var Form = {
       </form>
     );
   }
-};
+});
 
 render(Form, document.body);
 ```

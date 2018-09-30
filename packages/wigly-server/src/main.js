@@ -12,7 +12,7 @@ function ssr(node) {
   let attr = "";
   for (let name in node.attr) {
     let val = node.attr[name];
-    if (name === "key" || (name[0] === "o" && name[1] === "n")) {
+    if (name === "key" || (name[0] === "o" && name[1] === "n") || name === "children") {
     } else if (name === "style" && typeof val !== "string") {
       let next = "";
       for (let key in val) {
