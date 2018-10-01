@@ -113,13 +113,11 @@ var patch = (parent, element, old, node) => {
     var oldChildren = old["children"];
     var children = node["children"];
 
-    // patch the new
     while (i < children.length && element) {
       patch(element, oldElements[i], oldChildren[i], children[i]);
       i++;
     }
 
-    // remove the old
     while (i < oldChildren.length && oldElements[i]) {
       element.removeChild(removeChildren(oldElements[i], oldChildren[i]));
       i++;
@@ -237,11 +235,11 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   };
 };
 
-export var render = (root, el, patcher = patch) => {
+export var render = (root, container, patcher = patch) => {
   return patcher(
-    el,
+    container,
     undefined,
-    undefined,
-    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, null, null) // To support vanilla wigly and component wigly
+    0,
+    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, 0, 0) // To support vanilla wigly and component wigly
   );
 };
