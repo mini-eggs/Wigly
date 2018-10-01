@@ -108,23 +108,18 @@ var patch = (parent, element, old, node) => {
   } else {
     updateElement(element, node, old["attr"], node["attr"]);
 
-    var oldElements = [];
+    var i = 0;
+    var oldElements = element ? element.childNodes : [];
     var oldChildren = old["children"];
     var children = node["children"];
 
-    for (var i = 0; i < oldChildren.length && element; i++) {
-      oldElements[i] = element.childNodes[i];
-    }
-
-    var i = 0;
-    var k = 0;
-
-    while (k < children.length && element) {
-      patch(element, oldElements[i], oldChildren[i], children[k]);
-      k++;
+    // patch the new
+    while (i < children.length && element) {
+      patch(element, oldElements[i], oldChildren[i], children[i]);
       i++;
     }
 
+    // remove the old
     while (i < oldChildren.length && oldElements[i]) {
       element.removeChild(removeChildren(oldElements[i], oldChildren[i]));
       i++;
@@ -242,9 +237,9 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   };
 };
 
-export var render = (root, container, patcher = patch) => {
+export var render = (root, el, patcher = patch) => {
   return patcher(
-    container,
+    el,
     undefined,
     undefined,
     transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, null, null) // To support vanilla wigly and component wigly
