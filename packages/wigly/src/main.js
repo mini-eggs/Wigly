@@ -19,36 +19,24 @@ var lifecyleWrapper = (node, lc, el) => {
 };
 
 var updateAttribute = (element, name, value, old) => {
-  if (name === "key" || name === "children") {
+  if (special[name]) {
   } else if (name === "value") {
     element[name] = value;
   } else if (name === "style") {
     for (var i in { ...old, ...value }) {
-      var style = value == null || value[i] == null ? "" : value[i];
       if (i[0] === "-") {
-        element[name].setProperty(i, style);
+        element[name].setProperty(i, value[i]);
       } else {
-        element[name][i] = style;
+        element[name][i] = value[i];
       }
     }
   } else if (name[0] === "o" && name[1] === "n") {
     name = name.slice(2);
-
-    if (element.events) {
-      if (!old) old = element.events[name];
-    } else {
-      element.events = {};
-    }
-
+    element.events = element.events || {};
     element.events[name] = value;
-
-    if (value) {
-      if (!old) {
-        element.addEventListener(name, e => e.currentTarget.events[e.type](e));
-      }
-    } else {
-      element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
-    }
+    (value ? element.addEventListener : element.removeEventListener).call(element, name, e =>
+      e.currentTarget.events[e.type](e)
+    );
   } else if (falsy(value)) {
     element.removeAttribute(name);
   } else {
