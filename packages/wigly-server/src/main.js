@@ -29,4 +29,4 @@ function ssr(node) {
   return `<${node.tag}${attr}>${node.children.map(ssr).join("")}</${node.tag}>`;
 }
 
-module.exports = component => wigly.render(component, undefined, (_a, _b, _c, node) => ssr(node));
+module.exports = component => wigly.render(component, undefined, (_a, node, _b, _c) => ssr(node));

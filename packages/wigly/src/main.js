@@ -63,14 +63,12 @@ var createElement = node => {
       ? document.createComment("") // conditional
       : document.createElement(node["tag"]); // default
 
-  if (node["attr"]) {
-    for (var child of node["children"]) {
-      el.appendChild(createElement(child));
-    }
+  for (var child of node["children"] || []) {
+    el.appendChild(createElement(child));
+  }
 
-    for (var name in node["attr"]) {
-      updateAttribute(el, name, node["attr"][name], null);
-    }
+  for (var name in node["attr"]) {
+    updateAttribute(el, name, node["attr"][name], null);
   }
 
   return lifecyleWrapper(node, "mounted", el);
@@ -96,7 +94,7 @@ var removeChildren = (el, node) => {
   return lifecyleWrapper(node, "destroyed", el);
 };
 
-var patch = (parent, element, old, node) => {
+var patch = (parent, node, element, old) => {
   if (node === old) {
   } else if (old == null || old["tag"] !== node["tag"]) {
     var newElement = createElement(node);
@@ -114,7 +112,7 @@ var patch = (parent, element, old, node) => {
     var children = node["children"];
 
     while (i < children.length && element) {
-      patch(element, oldElements[i], oldChildren[i], children[i]);
+      patch(element, children[i], oldElements[i], oldChildren[i]);
       i++;
     }
 
@@ -162,14 +160,19 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
 
     /**
      * Turns out seeds are fucking great.
+     * Also, this is near unreadable because it saves more bytes this way.
      */
     var setState = (f, cb) => {
       if (isActive) {
-        var partial = typeof f === "function" ? f(state) : f;
-        state = { ...state, ...partial };
-        var rendered = { ...render.call(ctx()), ["lifecycle"]: lifecycle };
-        var next = transformer(patcher, rendered, childCallback, findChildSeedState);
-        patcher(el, el, lastVDOM, (lastVDOM = next));
+        state = { ...state, ...(typeof f === "function" ? f(state) : f) };
+        var next = transformer(
+          patcher,
+          { ...render.call(ctx()), ["lifecycle"]: lifecycle },
+          childCallback,
+          findChildSeedState
+        );
+        patcher(el, next, el, lastVDOM);
+        lastVDOM = next;
         cb && cb();
       }
     };
@@ -235,11 +238,7 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   };
 };
 
-export var render = (root, container, patcher = patch) => {
-  return patcher(
-    container,
-    undefined,
-    0,
-    transformer(patcher, typeof root === "function" ? root() : { ["tag"]: root }, 0, 0) // To support vanilla wigly and component wigly
-  );
+export var render = (tag, el, patcher = patch) => {
+  // Function check to support vanilla wigly and component wigly
+  return patcher(el, transformer(patcher, typeof tag === "function" ? tag() : { tag }, 0, 0));
 };
