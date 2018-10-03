@@ -26,6 +26,11 @@ async function copyLicense() {
   return await Promise.all(promises);
 }
 
+async function copyReadMe() {
+  var data = await fs.readFile(path.join(__dirname, "../README.md"), "utf-8");
+  return await fs.writeFile(path.join(__dirname, "../packages/wigly", "README.md"), data, "utf-8");
+}
+
 async function pkgJson() {
   var transfrom = json => JSON.stringify({ ...JSON.parse(json), ...PackageJSON }, null, 2);
   var dir = await fs.readdir(path.join(__dirname, "../packages"), "utf-8");
@@ -39,6 +44,7 @@ async function pkgJson() {
 async function main() {
   try {
     await copyLicense();
+    await copyReadMe();
     await pkgJson();
   } catch (e) {
     process.stdout.write(e.toString() + "\n");

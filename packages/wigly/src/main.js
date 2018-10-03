@@ -4,7 +4,6 @@ var falsyNode = { tag: "#", children: [] }; // This ultimately gets rendered as 
 
 var special = {
   ["tag"]: true,
-  ["key"]: true,
   ["lifecycle"]: true,
   ["data"]: true,
   ["mounted"]: true,
@@ -204,7 +203,6 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
 
   return {
     ["tag"]: tree["tag"] || "div",
-    ["key"]: tree["key"],
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
     ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(patcher, i, parentCallback, getSeedState)))
