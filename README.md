@@ -39,7 +39,7 @@ JSX 'Hello, World!'
 import { render } from "wigly";
 import { h } from "wigly-jsx";
 
-let App = {
+var App = {
   render() {
     return <div>This is a triumph.</div>;
   }
@@ -88,7 +88,7 @@ State, props, children, and events.
 import { render } from "wigly";
 import { h } from "wigly-jsx";
 
-let InputContainer = {
+var InputContainer = {
   data() {
     return { name: "" }; // initial state
   },
@@ -110,7 +110,7 @@ let InputContainer = {
   }
 };
 
-let App = {
+var App = {
   render() {
     return <InputContainer title="Please enter your name below.">Your name is</InputContainer>;
   }
@@ -125,7 +125,7 @@ render(App, document.body);
 import { render } from "wigly";
 import { h } from "wigly-jsx";
 
-let App = {
+var App = {
   mounted(el) {
     // called after component has entered DOM.
   },

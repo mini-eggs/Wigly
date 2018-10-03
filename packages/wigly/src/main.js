@@ -19,7 +19,7 @@ var lifecyleWrapper = (node, lc, el) => {
 };
 
 var updateAttribute = (element, name, value, old) => {
-  if (special[name]) {
+  if (special[name] || name === "children") {
   } else if (name === "value") {
     element[name] = value;
   } else if (name === "style") {
@@ -180,31 +180,16 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
       parentCallback && parentCallback(key, el, that, vdom, childCtx);
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
-
-      var push = () => renderedChildren.push({ ...that, ["ctx"]: childCtx });
-      var removeCurr = item => item["tag"] !== that["tag"] && item["key"] !== that["key"];
-      var remove = () => (renderedChildren = renderedChildren.filter(removeCurr));
-
-      if (key === "mounted") {
-        push();
-      } else if (key === "updated") {
-        remove();
-        push();
-      } else {
-        remove();
-      }
+      // Honestly, this shit doesn't make sense but it works.
+      renderedChildren = key === "destroyed" ? [] : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
     };
 
-    // meditate on this check, it's very simple and error prone as is
-    var findChildSeedState = that => {
-      for (var renderedChild of renderedChildren) {
-        if (that["tag"] === renderedChild["tag"] && that["key"] === renderedChild["key"]) {
-          return renderedChild["ctx"]()["state"];
-        }
-      }
-
-      return getSeedState && getSeedState(that);
-    };
+    var findChildSeedState = find =>
+      // I'm not sure WHY this `===` check works but it does
+      renderedChildren.reduce(
+        (final, item) => (item["tag"] === find["tag"] ? item["ctx"]()["state"] : final),
+        getSeedState && getSeedState(find)
+      );
 
     return (lastVDOM = transformer(
       patcher,
