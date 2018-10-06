@@ -304,7 +304,9 @@ test("Mapping props item stays consistent in DOM.", async t => {
 
     render() {
       parentCtx = this;
-      return <div>{this.state.active && <Child items={this.state.items} />}</div>;
+      return (
+        <div>{this.state.active && <Child items={this.state.items} />}</div>
+      );
     }
   });
 
@@ -395,7 +397,10 @@ test("setState and callback after mount works as expected", async t => {
 
       updated(el) {
         if (this.props.count === 1 && this.state.count === 0) {
-          this.setState(({ count }) => ({ count: count + 1 }), () => this.onUpdate(el));
+          this.setState(
+            ({ count }) => ({ count: count + 1 }),
+            () => this.onUpdate(el)
+          );
         }
       },
 
@@ -490,7 +495,9 @@ test("Updates work as expected with parent setState.", t => {
     },
 
     afterUpdate() {
-      this.props.oninput(this.state.items.filter(({ active }) => active).length);
+      this.props.oninput(
+        this.state.items.filter(({ active }) => active).length
+      );
     },
 
     render() {
@@ -522,10 +529,20 @@ test("Updates work as expected with parent setState.", t => {
   var el = render(Parent, document.body);
   t.deepEqual(el.querySelectorAll(".active").length, 0);
 
-  ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: true })) }), ctx.afterUpdate);
+  ctx.setState(
+    ({ items }) => ({
+      items: items.map(({ title }) => ({ title, active: true }))
+    }),
+    ctx.afterUpdate
+  );
   t.deepEqual(el.querySelectorAll(".active").length, 5);
 
-  ctx.setState(({ items }) => ({ items: items.map(({ title }) => ({ title, active: false })) }), ctx.afterUpdate);
+  ctx.setState(
+    ({ items }) => ({
+      items: items.map(({ title }) => ({ title, active: false }))
+    }),
+    ctx.afterUpdate
+  );
   t.deepEqual(el.querySelectorAll(".active").length, 0);
 });
 
@@ -655,8 +672,18 @@ test("Example: mixin", t => {
       ctx = this;
       return (
         <form onsubmit={this.stop(this.handleSubmit)}>
-          <input type="text" oninput={this.update("fname")} name="fname" placeholder="First Name" />
-          <input type="text" oninput={this.update("lname")} name="lname" placeholder="Last Name" />
+          <input
+            type="text"
+            oninput={this.update("fname")}
+            name="fname"
+            placeholder="First Name"
+          />
+          <input
+            type="text"
+            oninput={this.update("lname")}
+            name="lname"
+            placeholder="Last Name"
+          />
           <input type="submit" value="Submit" />
         </form>
       );
@@ -792,4 +819,37 @@ test("Breaking change for enabling typed (ts) components.", t => {
 
   var el = render(Parent, document.body);
   t.deepEqual(el.textContent, "Hi, Evan!");
+});
+
+test("Ensuring props and children aren't all fucked up.", t => {
+  var ctx;
+
+  var ChildOne = {
+    render() {
+      return { children: "here we go 1", style: { color: "red" } };
+    }
+  };
+
+  var ChildTwo = {
+    render() {
+      return { children: "here we go 2" };
+    }
+  };
+
+  var Parent = {
+    data() {
+      return { component: ChildOne };
+    },
+
+    render() {
+      ctx = this;
+      return { tag: this.state.component };
+    }
+  };
+
+  var el = render(Parent, document.body);
+  t.deepEqual(el.textContent, "here we go 1");
+
+  ctx.setState({ component: ChildTwo });
+  t.deepEqual(el.textContent, "here we go 2");
 });

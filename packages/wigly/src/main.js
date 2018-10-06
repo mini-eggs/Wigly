@@ -22,6 +22,7 @@ var updateAttribute = (element, name, value, old) => {
   } else if (name === "value") {
     element[name] = value;
   } else if (name === "style") {
+    value = value || {};
     for (var i in { ...old, ...value }) {
       if (i[0] === "-") {
         element[name].setProperty(i, value[i]);
@@ -33,8 +34,10 @@ var updateAttribute = (element, name, value, old) => {
     name = name.slice(2);
     element.events = element.events || {};
     element.events[name] = value;
-    (value ? element.addEventListener : element.removeEventListener).call(element, name, e =>
-      e.currentTarget.events[e.type](e)
+    (value ? element.addEventListener : element.removeEventListener).call(
+      element,
+      name,
+      e => e.currentTarget.events[e.type](e)
     );
   } else if (falsy(value)) {
     element.removeAttribute(name);
@@ -132,12 +135,27 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     var renderedChildren = [];
     var render = inst["render"];
     var state = getSeedState && getSeedState(tree);
-    var methods = Object.keys(inst).reduce((t, k) => (special[k] ? t : { ...t, [k]: inst[k] }), {});
-    var lifecycle = { ["mounted"]: inst["mounted"], ["updated"]: inst["updated"], ["destroyed"]: inst["destroyed"] };
+    var methods = Object.keys(inst).reduce(
+      (t, k) => (special[k] ? t : { ...t, [k]: inst[k] }),
+      {}
+    );
+    var lifecycle = {
+      ["mounted"]: inst["mounted"],
+      ["updated"]: inst["updated"],
+      ["destroyed"]: inst["destroyed"]
+    };
 
     // wire methods + lifecycle
-    for (var key in methods) ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(key, methods[key]);
-    for (var key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
+    for (var key in methods)
+      ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(
+        key,
+        methods[key]
+      );
+    for (var key in lifecycle)
+      ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(
+        key,
+        lifecycle[key]
+      );
 
     var ctx = () => {
       var partial = { ["props"]: props, ...methods };
@@ -180,13 +198,17 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
       // Honestly, this shit doesn't make sense but it works.
-      renderedChildren = key === "destroyed" ? [] : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
+      renderedChildren =
+        key === "destroyed"
+          ? []
+          : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
     };
 
     var findChildSeedState = find =>
       // I'm not sure WHY this `===` check works but it does
       renderedChildren.reduce(
-        (final, item) => (item["tag"] === find["tag"] ? item["ctx"]()["state"] : final),
+        (final, item) =>
+          item["tag"] === find["tag"] ? item["ctx"]()["state"] : final,
         getSeedState && getSeedState(find)
       );
 
@@ -199,17 +221,27 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   }
 
   // ensure children are arr
-  var children = isSimple(tree["children"]) ? [tree["children"]] : tree["children"] || [];
+  var children = isSimple(tree["children"])
+    ? [tree["children"]]
+    : tree["children"] || [];
 
   return {
     ["tag"]: tree["tag"] || "div",
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
-    ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(patcher, i, parentCallback, getSeedState)))
+    ["children"]: children.map(
+      i =>
+        falsy(i)
+          ? falsyNode
+          : transformer(patcher, i, parentCallback, getSeedState)
+    )
   };
 };
 
 export var render = (tag, el, patcher = patch) => {
   // Function check to support vanilla wigly and component wigly
-  return patcher(el, transformer(patcher, typeof tag === "function" ? tag() : { tag }, 0, 0));
+  return patcher(
+    el,
+    transformer(patcher, typeof tag === "function" ? tag() : { tag }, 0, 0)
+  );
 };
