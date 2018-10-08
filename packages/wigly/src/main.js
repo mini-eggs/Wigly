@@ -34,10 +34,8 @@ var updateAttribute = (element, name, value, old) => {
     name = name.slice(2);
     element.events = element.events || {};
     element.events[name] = value;
-    (value ? element.addEventListener : element.removeEventListener).call(
-      element,
-      name,
-      e => e.currentTarget.events[e.type](e)
+    (value ? element.addEventListener : element.removeEventListener).call(element, name, e =>
+      e.currentTarget.events[e.type](e)
     );
   } else if (falsy(value)) {
     element.removeAttribute(name);
@@ -96,19 +94,19 @@ var patch = (parent, node, element, old) => {
   } else {
     updateElement(element, node, old["attr"], node["attr"]);
 
-    var i = 0;
-    var oldElements = element ? element.childNodes : [];
-    var oldChildren = old["children"];
-    var children = node["children"];
+    var old_els = element ? element["childNodes"] : [];
+    var old_c = old ? old["children"] : [];
+    var new_c = node ? node["children"] : [];
+    var old_l = old_c["length"] - 1;
+    var new_l = new_c["length"];
 
-    while (i < children.length && element) {
-      patch(element, children[i], oldElements[i], oldChildren[i]);
-      i++;
+    while (old_l >= new_l) {
+      element.removeChild(removeChildren(old_els[old_l], old_c[old_l]));
+      old_l--;
     }
 
-    while (i < oldChildren.length && oldElements[i]) {
-      element.removeChild(removeChildren(oldElements[i], oldChildren[i]));
-      i++;
+    for (var i = 0; i < new_l; i++) {
+      patch(element, new_c[i], old_els[i], old_c[i]);
     }
   }
 
@@ -135,10 +133,7 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     var renderedChildren = [];
     var render = inst["render"];
     var state = getSeedState && getSeedState(tree);
-    var methods = Object.keys(inst).reduce(
-      (t, k) => (special[k] ? t : { ...t, [k]: inst[k] }),
-      {}
-    );
+    var methods = Object.keys(inst).reduce((t, k) => (special[k] ? t : { ...t, [k]: inst[k] }), {});
     var lifecycle = {
       ["mounted"]: inst["mounted"],
       ["updated"]: inst["updated"],
@@ -146,16 +141,8 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     };
 
     // wire methods + lifecycle
-    for (var key in methods)
-      ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(
-        key,
-        methods[key]
-      );
-    for (var key in lifecycle)
-      ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(
-        key,
-        lifecycle[key]
-      );
+    for (var key in methods) ((key, f) => (methods[key] = (...args) => f.call(ctx(), ...args)))(key, methods[key]);
+    for (var key in lifecycle) ((key, f) => (lifecycle[key] = el => lifecycleWrap(f, key, el)))(key, lifecycle[key]);
 
     var ctx = () => {
       var partial = { ["props"]: props, ...methods };
@@ -198,17 +185,13 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
       // Honestly, this shit doesn't make sense but it works.
-      renderedChildren =
-        key === "destroyed"
-          ? []
-          : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
+      renderedChildren = key === "destroyed" ? [] : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
     };
 
     var findChildSeedState = find =>
       // I'm not sure WHY this `===` check works but it does
       renderedChildren.reduce(
-        (final, item) =>
-          item["tag"] === find["tag"] ? item["ctx"]()["state"] : final,
+        (final, item) => (item["tag"] === find["tag"] ? item["ctx"]()["state"] : final),
         getSeedState && getSeedState(find)
       );
 
@@ -221,27 +204,17 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
   }
 
   // ensure children are arr
-  var children = isSimple(tree["children"])
-    ? [tree["children"]]
-    : tree["children"] || [];
+  var children = isSimple(tree["children"]) ? [tree["children"]] : tree["children"] || [];
 
   return {
     ["tag"]: tree["tag"] || "div",
     ["lifecycle"]: tree["lifecycle"],
     ["attr"]: props,
-    ["children"]: children.map(
-      i =>
-        falsy(i)
-          ? falsyNode
-          : transformer(patcher, i, parentCallback, getSeedState)
-    )
+    ["children"]: children.map(i => (falsy(i) ? falsyNode : transformer(patcher, i, parentCallback, getSeedState)))
   };
 };
 
 export var render = (tag, el, patcher = patch) => {
   // Function check to support vanilla wigly and component wigly
-  return patcher(
-    el,
-    transformer(patcher, typeof tag === "function" ? tag() : { tag }, 0, 0)
-  );
+  return patcher(el, transformer(patcher, typeof tag === "function" ? tag() : { tag }, 0, 0));
 };

@@ -304,9 +304,7 @@ test("Mapping props item stays consistent in DOM.", async t => {
 
     render() {
       parentCtx = this;
-      return (
-        <div>{this.state.active && <Child items={this.state.items} />}</div>
-      );
+      return <div>{this.state.active && <Child items={this.state.items} />}</div>;
     }
   });
 
@@ -397,10 +395,7 @@ test("setState and callback after mount works as expected", async t => {
 
       updated(el) {
         if (this.props.count === 1 && this.state.count === 0) {
-          this.setState(
-            ({ count }) => ({ count: count + 1 }),
-            () => this.onUpdate(el)
-          );
+          this.setState(({ count }) => ({ count: count + 1 }), () => this.onUpdate(el));
         }
       },
 
@@ -495,9 +490,7 @@ test("Updates work as expected with parent setState.", t => {
     },
 
     afterUpdate() {
-      this.props.oninput(
-        this.state.items.filter(({ active }) => active).length
-      );
+      this.props.oninput(this.state.items.filter(({ active }) => active).length);
     },
 
     render() {
@@ -672,18 +665,8 @@ test("Example: mixin", t => {
       ctx = this;
       return (
         <form onsubmit={this.stop(this.handleSubmit)}>
-          <input
-            type="text"
-            oninput={this.update("fname")}
-            name="fname"
-            placeholder="First Name"
-          />
-          <input
-            type="text"
-            oninput={this.update("lname")}
-            name="lname"
-            placeholder="Last Name"
-          />
+          <input type="text" oninput={this.update("fname")} name="fname" placeholder="First Name" />
+          <input type="text" oninput={this.update("lname")} name="lname" placeholder="Last Name" />
           <input type="submit" value="Submit" />
         </form>
       );
@@ -824,9 +807,14 @@ test("Breaking change for enabling typed (ts) components.", t => {
 test("Ensuring props and children aren't all fucked up.", t => {
   var ctx;
 
+  var timesten = i => Array.from({ length: 10 }).map(() => i);
+
   var ChildOne = {
     render() {
-      return { children: "here we go 1", style: { color: "red" } };
+      return {
+        style: { color: "red" },
+        children: timesten({ children: "here we go 1" })
+      };
     }
   };
 
@@ -848,7 +836,7 @@ test("Ensuring props and children aren't all fucked up.", t => {
   };
 
   var el = render(Parent, document.body);
-  t.deepEqual(el.textContent, "here we go 1");
+  t.deepEqual(el.textContent, timesten("here we go 1").join(""));
 
   ctx.setState({ component: ChildTwo });
   t.deepEqual(el.textContent, "here we go 2");
