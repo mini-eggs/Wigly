@@ -93,23 +93,15 @@ var patch = (parent, node, element, old) => {
     element.nodeValue = node;
   } else {
     updateElement(element, node, old["attr"], node["attr"]);
-
-    var old_els = element ? element["childNodes"] : [];
-    var old_c = old ? old["children"] : [];
-    var new_c = node ? node["children"] : [];
-    var old_l = old_c["length"] - 1;
-    var new_l = new_c["length"];
-
-    while (old_l >= new_l) {
-      element.removeChild(removeChildren(old_els[old_l], old_c[old_l]));
-      old_l--;
+    // removal of children
+    for (var i = old.children.length - 1; i >= node.children.length; i--) {
+      element.removeChild(removeChildren(element.childNodes[i], old.children[i]));
     }
-
-    for (var i = 0; i < new_l; i++) {
-      patch(element, new_c[i], old_els[i], old_c[i]);
+    // updating of children
+    for (var i = 0; i < node.children.length; i++) {
+      patch(element, node.children[i], element.childNodes[i], old.children[i]);
     }
   }
-
   return element;
 };
 
