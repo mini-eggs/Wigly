@@ -32,11 +32,20 @@ var updateAttribute = (element, name, value, old) => {
     }
   } else if (name[0] === "o" && name[1] === "n") {
     name = name.slice(2);
-    element.events = element.events || {};
+
+    if (element.events) {
+      !old && (old = element.events[name]);
+    } else {
+      element.events = {};
+    }
+
     element.events[name] = value;
-    (value ? element.addEventListener : element.removeEventListener).call(element, name, e =>
-      e.currentTarget.events[e.type](e)
-    );
+
+    if (value) {
+      !old && element.addEventListener(name, e => e.currentTarget.events[e.type](e));
+    } else {
+      element.removeEventListener(name, e => e.currentTarget.events[e.type](e));
+    }
   } else if (falsy(value)) {
     element.removeAttribute(name);
   } else {
@@ -93,15 +102,18 @@ var patch = (parent, node, element, old) => {
     element.nodeValue = node;
   } else {
     updateElement(element, node, old["attr"], node["attr"]);
+
     // removal of children
     for (var i = old.children.length - 1; i >= node.children.length; i--) {
       element.removeChild(removeChildren(element.childNodes[i], old.children[i]));
     }
+
     // updating of children
     for (var i = 0; i < node.children.length; i++) {
       patch(element, node.children[i], element.childNodes[i], old.children[i]);
     }
   }
+
   return element;
 };
 
@@ -174,14 +186,16 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     var childCallback = (key, el, that, vdom, childCtx) => {
       // For the case of intermediate components that do not touch children.
       parentCallback && parentCallback(key, el, that, vdom, childCtx);
+
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
-      // Honestly, this shit doesn't make sense but it works.
-      renderedChildren = key === "destroyed" ? [] : [{ ...that, ["ctx"]: childCtx }, ...renderedChildren];
+
+      // why tf does any of this work?
+      if (key !== "mounted") renderedChildren = [];
+      if (key !== "destroyed") renderedChildren.push({ ...that, ["ctx"]: childCtx });
     };
 
     var findChildSeedState = find =>
-      // I'm not sure WHY this `===` check works but it does
       renderedChildren.reduce(
         (final, item) => (item["tag"] === find["tag"] ? item["ctx"]()["state"] : final),
         getSeedState && getSeedState(find)
