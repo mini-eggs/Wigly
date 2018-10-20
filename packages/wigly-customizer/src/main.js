@@ -2,14 +2,19 @@ export var customizer = (f, options) => {
   var arr = item => (Array.isArray(item) ? item : [item]);
 
   var traverse = struct => {
-    if (typeof struct === "number" || typeof struct === "string" || !struct) {
+    if (["number", "string"].indexOf(typeof struct) !== -1 || !struct) {
       return struct;
     }
 
     return {
       ...struct,
-      ["children"]: arr(struct["children"] || []).map(child => (options["applyToChildren"] ? traverse(child) : child)),
-      ["tag"]: typeof struct["tag"] === "object" ? f(struct["tag"]) : struct["tag"]
+      ["children"]: arr(struct["children"] || []).map(
+        child => (options["applyToChildren"] ? traverse(child) : child)
+      ),
+      ["tag"]:
+        ["object", "function"].indexOf(typeof struct["tag"]) !== -1
+          ? f(struct["tag"])
+          : struct["tag"]
     };
   };
 
