@@ -1,6 +1,6 @@
 # Wigly, the hackable JavaScript library for building user interfaces.
 
-This package is an addon to Wigly that allows users to create their own UI library built on top of Wigly (with only a little bit of pain). This package empowers user to modifying any/every component in a given component tree while needing to be used only once.
+This package is an add-on to Wigly that allows users to create their own UI library built on top of Wigly (with only a little bit of pain). This package empowers users to modifying any/every component in a given component tree while needing to be used only once.
 
 If you've ever wanted to create your own UI library but haven't much cared to dig down into DOM or spend the time making components communicate to each other effectively you have come to the right place.
 
@@ -75,9 +75,9 @@ var Parent = {
 
 These components would result in the same span tag rendered with the text content still being "My name is Evan!"
 
-Every component will also have lifecycles that are called. Wigly core has only three, mounted, updated, and destroyed. As you will see this Wigly Customizer package will let you easily build more on top of Wigly.
+Every component will also have lifecycles that are called. Wigly core has only three- mounted, updated, and destroyed. As you will see, this Wigly Customizer package will let you easily build more on top of Wigly.
 
-When I first created Wigly I was on the fence if it should be stateful or "functional", as seen above I went with a stateful approach but with this Wigly Customizer package it is at the application author's hands to turn this into a "functional" UI library. Here's how one might do so, effectively creating their _own_ UI library.
+When I first created Wigly I was on the fence if it should be stateful or "functional". As seen above I went with a stateful approach, but with this Wigly Customizer package it is at the application author's hands to turn this into a "functional" UI library. Here's how one might do so, effectively creating their _own_ UI library.
 
 ```javascript
 import wigly from "wigly"
@@ -122,7 +122,7 @@ var App = {
 wigly.render(fp(App), document.body);
 ```
 
-As you might expect, when rendered this will render a single h1 tag with the text content of "Hi, my name is Evan!"
+As you might expect, this will render a single h1 tag with the text content of "Hi, my name is Evan!"
 
 Here's another example, this time creating a "context" sort of API.
 
@@ -153,4 +153,4 @@ var App = {
 wigly.render(context(App), document.body);
 ```
 
-That's all I have in me for now. I hope you see how powerful this package is. I'll add some more docs in time. Take it easy.
+That's all I have in me for now. I hope you see how powerful this package is. I'll add some more docs in time. Take it easy. 
