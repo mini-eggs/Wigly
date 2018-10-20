@@ -186,10 +186,8 @@ var transformer = (patcher, tree, parentCallback, getSeedState) => {
     var childCallback = (key, el, that, vdom, childCtx) => {
       // For the case of intermediate components that do not touch children.
       parentCallback && parentCallback(key, el, that, vdom, childCtx);
-
       // For the case of parent only has one node child; another component.
       lastVDOM === vdom && lifecycle[key](el);
-
       // why tf does any of this work?
       if (key !== "mounted") renderedChildren = [];
       if (key !== "destroyed") renderedChildren.push({ ...that, ["ctx"]: childCtx });

@@ -1,5 +1,5 @@
 {
-  "name": "wigly-dom",
+  "name": "wigly-ctx",
   "main": "dist/es5.js",
   "version": "0.1.18",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "peerDependencies": {
     "wigly": "^0.1.x",
-    "wigly-component": "^0.1.x"
+    "wigly-customizer": "^0.1.x"
   },
   "devDependencies": {
     "@babel/preset-react": "^7.0.0-rc.3",
@@ -20,7 +20,7 @@
     "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "^20180805.0.0",
     "wigly": "^0.1.18",
-    "wigly-component": "^0.1.18"
+    "wigly-customizer": "^0.1.18"
   },
   "ava": {
     "babel": {
