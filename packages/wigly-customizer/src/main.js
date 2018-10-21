@@ -1,6 +1,6 @@
-export var customizer = (f, options) => {
-  var arr = item => (Array.isArray(item) ? item : [item]);
+var arr = item => (Array.isArray(item) ? item : [item]);
 
+export var customizer = (f, options) => {
   var traverse = struct => {
     if (["number", "string"].indexOf(typeof struct) !== -1 || !struct) {
       return struct;
@@ -13,14 +13,13 @@ export var customizer = (f, options) => {
       ),
       ["tag"]:
         ["object", "function"].indexOf(typeof struct["tag"]) !== -1
-          ? f(struct["tag"])
+          ? customizer(f, options)(struct["tag"])
           : struct["tag"]
     };
   };
 
   return sig => {
     var next = f(sig);
-
     return {
       ...next,
       ["render"]: function() {
