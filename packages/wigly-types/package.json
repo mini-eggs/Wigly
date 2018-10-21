@@ -1,6 +1,6 @@
 {
   "name": "wigly-types",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "scripts": {
     "start": "npm-run-all -p start:wigly-component start:wigly-jsx start:wigly",
     "start:wigly-component": "cp src/wigly-component.d.ts ../wigly-component/dist/es5.d.ts && cp src/wigly-component.d.ts ../wigly-component/dist/es6.d.ts",
