@@ -24,3 +24,31 @@ test("Hello World!", t => {
   var el = wigly.render(custom(App), document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
+
+test("Nested components work, duh.", t => {
+  class One {
+    render() {
+      return <div>test</div>;
+    }
+  }
+
+  class Two {
+    render() {
+      return <div>{this.props.children}</div>;
+    }
+  }
+
+  class Three {
+    render() {
+      return (
+        <Two>
+          <One />
+        </Two>
+      );
+    }
+  }
+
+  var custom = customizer(classer, { applyToChildren: true });
+  var el = wigly.render(custom(Three), document.body);
+  t.deepEqual(el.textContent, "test");
+});
