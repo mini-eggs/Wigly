@@ -19,10 +19,11 @@ export var use = f => ({
   ),
 
   ["use"](initial) {
+    var current = this["state"]["v"]["get"](initial);
     return [
-      this["state"]["v"]["get"](initial) || initial,
+      current ? current.value : initial,
       value => {
-        this["state"]["v"]["set"](initial, value);
+        this["state"]["v"]["set"](initial, { value });
         this["setState"]({});
       }
     ];
