@@ -23,8 +23,6 @@ export var useState = (initial: any) => {
   ];
 };
 
-export default use;
-
 // @ts-ignore
 self["use"] = use;
 // @ts-ignore
