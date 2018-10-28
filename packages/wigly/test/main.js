@@ -1,18 +1,15 @@
 import test from "ava";
-import { render } from "../";
-import { component } from "wigly-component";
-import { h } from "wigly-jsx";
-
-var React = { createElement: h }; // for jsx
+import wigly from "../";
+import h from "wigly-jsx";
 
 require("browser-env")();
 
-test("'Hello, World!' - part one", async t => {
-  var HelloWorld = component({
+test("'Hello, World!' - part one", t => {
+  var HelloWorld = {
     render: () => ({ children: "Hello, World!" })
-  });
+  };
 
-  var el = render(HelloWorld, document.body);
+  var el = wigly.render(HelloWorld, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
@@ -20,7 +17,7 @@ test("Ensure prop updates happen everywhere", async t => {
   var childCtx;
   var parentCtx;
 
-  var Child = component({
+  var Child = {
     tester() {
       return this.props.title;
     },
@@ -29,20 +26,20 @@ test("Ensure prop updates happen everywhere", async t => {
       childCtx = this;
       return { children: [{ children: this.props.title }] };
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return { title: "Hello, World!" };
     },
 
     render() {
       parentCtx = this;
-      return { children: [Child({ title: this.state.title })] };
+      return { children: [{ tag: Child, title: this.state.title }] };
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 
   parentCtx.setState(() => ({ title: "Hello, Twitter!" }));
@@ -51,95 +48,95 @@ test("Ensure prop updates happen everywhere", async t => {
 });
 
 test("Nully render", async t => {
-  var Child = component({
+  var Child = {
     render() {
       return null;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
-      return { children: [Child()] };
+      return { children: [{ tag: Child }] };
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 
-  Parent = component({
+  Parent = {
     render() {
       return { children: [null] };
     }
-  });
+  };
 
-  el = render(Parent, document.body);
+  el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 });
 
 test("Falsies render", async t => {
-  var Child = component({
+  var Child = {
     render() {
       return false;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
-      return { children: [Child()] };
+      return { children: [{ tag: Child }] };
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 
-  Parent = component({
+  Parent = {
     render() {
       return { children: [false] };
     }
-  });
+  };
 
-  el = render(Parent, document.body);
+  el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "");
 });
 
 test("Passing children works through intermediate components.", async t => {
-  var Child = component({
+  var Child = {
     render() {
       return { children: this.props.children };
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
-      return Child({ children: ["here", "we", "go"] });
+      return { tag: Child, children: ["here", "we", "go"] };
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
 });
 
 test("Passing children works through intermediate components with jsx.", async t => {
-  var Child = component({
+  var Child = {
     render() {
       return <div>{this.props.children}</div>;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
       return <Child>Here we go</Child>;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Here we go");
 });
 
 test("Lifecyles work as expected", async t => {
   var mountCount = 0;
 
-  var Child = component({
+  var Child = {
     mounted() {
       mountCount++;
     },
@@ -147,9 +144,9 @@ test("Lifecyles work as expected", async t => {
     render() {
       return <div>testing</div>;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     mounted() {
       mountCount++;
     },
@@ -157,9 +154,9 @@ test("Lifecyles work as expected", async t => {
     render() {
       return <Child />;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "testing");
   t.deepEqual(mountCount, 2);
 });
@@ -168,7 +165,7 @@ test("Child components don't keep stale state.", async t => {
   var parentCtx;
   var childCtx;
 
-  var Child = component({
+  var Child = {
     data() {
       return { name: "World" };
     },
@@ -177,9 +174,9 @@ test("Child components don't keep stale state.", async t => {
       childCtx = this;
       return <div>Hello, {this.state.name}!</div>;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return { active: true };
     },
@@ -197,9 +194,9 @@ test("Child components don't keep stale state.", async t => {
         </div>
       );
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 
   childCtx.setState(() => ({ name: "Twitter" }));
@@ -215,7 +212,7 @@ test("Child components don't keep stale state.", async t => {
 test("Data hook has props and children set correctly.", async t => {
   var data;
 
-  var Child = component({
+  var Child = {
     data() {
       data = this;
     },
@@ -226,23 +223,25 @@ test("Data hook has props and children set correctly.", async t => {
         </div>
       );
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
       return <Child greeting="Hello">World!</Child>;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
-  t.deepEqual(data, { props: { greeting: "Hello", children: ["World!"] } });
+
+  t.deepEqual(data.props.greeting, "Hello");
+  t.deepEqual(data.props.children, ["World!"]);
 });
 
 test("Ensure mounted setState updates state", async t => {
   var test;
 
-  var Child = component({
+  var Child = {
     data() {
       return { cb: false };
     },
@@ -258,9 +257,9 @@ test("Ensure mounted setState updates state", async t => {
     render() {
       return <div>Hello, World!</div>;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return { active: true };
     },
@@ -272,9 +271,9 @@ test("Ensure mounted setState updates state", async t => {
     render() {
       return <div>{this.state.active && <Child />}</div>;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "");
   t.deepEqual(test, "Hello, Twitter!");
 });
@@ -282,7 +281,7 @@ test("Ensure mounted setState updates state", async t => {
 test("Mapping props item stays consistent in DOM.", async t => {
   var parentCtx;
 
-  var Child = component({
+  var Child = {
     render() {
       return (
         <div>
@@ -292,9 +291,9 @@ test("Mapping props item stays consistent in DOM.", async t => {
         </div>
       );
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return {
         items: [{ title: "here" }, { title: "we" }, { title: "go" }],
@@ -306,9 +305,9 @@ test("Mapping props item stays consistent in DOM.", async t => {
       parentCtx = this;
       return <div>{this.state.active && <Child items={this.state.items} />}</div>;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, ["here", "we", "go"].join(""));
 
   parentCtx.setState(() => ({ active: false }));
@@ -320,13 +319,13 @@ test("Children with conditional renders are removed from DOM properly.", t => {
   var childTwoCtx;
   var parentCtx;
 
-  var DeepChild = component({
+  var DeepChild = {
     render() {
       return <div>here we go</div>;
     }
-  });
+  };
 
-  var ChildOne = component({
+  var ChildOne = {
     data() {
       return { active: false };
     },
@@ -340,16 +339,16 @@ test("Children with conditional renders are removed from DOM properly.", t => {
         </div>
       );
     }
-  });
+  };
 
-  var ChildTwo = component({
+  var ChildTwo = {
     render() {
       childTwoCtx = this;
       return <div>Child Two</div>;
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return { component: ChildOne, name: "ChildOne" };
     },
@@ -363,9 +362,9 @@ test("Children with conditional renders are removed from DOM properly.", t => {
         </div>
       );
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Child One");
 
   parentCtx.setState(() => ({ component: ChildTwo, name: "ChildTwo" }));
@@ -388,7 +387,7 @@ test("setState and callback after mount works as expected", async t => {
   var root;
 
   var promise = new Promise(resolve => {
-    var Child = component({
+    var Child = {
       data() {
         return { count: 0 };
       },
@@ -411,9 +410,9 @@ test("setState and callback after mount works as expected", async t => {
           </div>
         );
       }
-    });
+    };
 
-    var Parent = component({
+    var Parent = {
       data() {
         return { count: 0 };
       },
@@ -422,9 +421,9 @@ test("setState and callback after mount works as expected", async t => {
         parentCtx = this;
         return <Child count={this.state.count} />;
       }
-    });
+    };
 
-    root = render(Parent, document.body);
+    root = wigly.render(Parent, document.body);
   });
 
   t.deepEqual(root.textContent, "0 - 0");
@@ -433,30 +432,30 @@ test("setState and callback after mount works as expected", async t => {
 
   var { el, ctx } = await promise;
   t.deepEqual(el.textContent, "1 - 1");
-  t.deepEqual(ctx.props, { count: 1, children: [] });
+  t.deepEqual(ctx.props.count, 1);
   t.deepEqual(ctx.state, { count: 1 });
 });
 
 test("Swapping children works as expected.", t => {
   var ctx;
 
-  var One = component({
+  var One = {
     render: () => ({ children: "test 1" })
-  });
+  };
 
-  var Two = component({
+  var Two = {
     render: () => ({ children: "test 2" })
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data: () => ({ component: One }),
     render() {
       ctx = this;
       return <this.state.component />;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "test 1");
 
   ctx.setState(() => ({ component: Two }));
@@ -464,11 +463,11 @@ test("Swapping children works as expected.", t => {
 });
 
 test("Falsy values are rendered as comments.", t => {
-  var Parent = component({
+  var Parent = {
     render: () => <div>{false}</div>
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.nodeName.toUpperCase(), "DIV");
   t.deepEqual(el.innerHTML, "<!---->");
 });
@@ -476,7 +475,7 @@ test("Falsy values are rendered as comments.", t => {
 test("Updates work as expected with parent setState.", t => {
   var ctx;
 
-  var Child = component({
+  var Child = {
     data() {
       return {
         items: [
@@ -503,9 +502,9 @@ test("Updates work as expected with parent setState.", t => {
         </div>
       );
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     data() {
       return { val: 0 };
     },
@@ -517,9 +516,9 @@ test("Updates work as expected with parent setState.", t => {
     render() {
       return <Child oninput={this.handleUpdate} />;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.querySelectorAll(".active").length, 0);
 
   ctx.setState(
@@ -542,15 +541,15 @@ test("Updates work as expected with parent setState.", t => {
 test("Both types of setStates work.", t => {
   var ctx;
 
-  var app = component({
+  var app = {
     data: () => ({ name: "Evan" }),
     render() {
       ctx = this;
       return <div>Hello, my name is {this.state.name}.</div>;
     }
-  });
+  };
 
-  var el = render(app, document.body);
+  var el = wigly.render(app, document.body);
   t.deepEqual(el.textContent, "Hello, my name is Evan.");
 
   ctx.setState({ name: "Joba" });
@@ -561,13 +560,13 @@ test("Both types of setStates work.", t => {
 });
 
 test("Hello, Twitter!", t => {
-  var Child = component({
+  var Child = {
     render() {
       return <div>This is a {this.props.title} =-D</div>;
     }
-  });
+  };
 
-  var App = component({
+  var App = {
     data() {
       return { title: "triumph" };
     },
@@ -575,9 +574,9 @@ test("Hello, Twitter!", t => {
     render() {
       return <Child {...this.state} />;
     }
-  });
+  };
 
-  var el = render(App, document.body);
+  var el = wigly.render(App, document.body);
   t.deepEqual(el.textContent, "This is a triumph =-D");
 });
 
@@ -586,31 +585,30 @@ test("Hello, Twitter!", t => {
  */
 
 test("Example: higher order components", t => {
-  var withName = Component =>
-    component({
-      data() {
-        return { name: "Evan" };
-      },
+  var withName = Component => ({
+    data() {
+      return { name: "Evan" };
+    },
 
-      render() {
-        return <Component {...this.state} />;
-      }
-    });
-
-  var Example = component({
     render() {
-      return <div>My name is {this.props.name}</div>;
+      return <Component {...this.state} />;
     }
   });
 
+  var Example = {
+    render() {
+      return <div>My name is {this.props.name}</div>;
+    }
+  };
+
   var ExampleWithName = withName(Example);
 
-  var el = render(ExampleWithName, document.body);
+  var el = wigly.render(ExampleWithName, document.body);
   t.deepEqual(el.textContent, "My name is Evan");
 });
 
 test("Example: render props", t => {
-  var Name = component({
+  var Name = {
     data() {
       return { name: "Evan" };
     },
@@ -620,15 +618,15 @@ test("Example: render props", t => {
       var f = this.props.children[0];
       return f(this.state);
     }
-  });
+  };
 
-  var Example = component({
+  var Example = {
     render() {
       return <Name>{({ name }) => <div>My name is {name}</div>}</Name>;
     }
-  });
+  };
 
-  var el = render(Example, document.body);
+  var el = wigly.render(Example, document.body);
   t.deepEqual(el.textContent, "My name is Evan");
 });
 
@@ -650,7 +648,7 @@ test("Example: mixin", t => {
     }
   };
 
-  var Form = component({
+  var Form = {
     ...FormMixin,
 
     data() {
@@ -671,9 +669,9 @@ test("Example: mixin", t => {
         </form>
       );
     }
-  });
+  };
 
-  render(Form, document.body);
+  wigly.render(Form, document.body);
   t.deepEqual(ctx.state, { fname: "", lname: "" });
 
   var el = document.querySelector("input[name='fname']");
@@ -683,19 +681,19 @@ test("Example: mixin", t => {
 });
 
 test("Deep children behave properly.", t => {
-  var One = component({
+  var One = {
     render() {
       return <button onclick={this.props.onclick} />;
     }
-  });
+  };
 
-  var Two = component({
+  var Two = {
     render() {
       return <div>{this.props.children}</div>;
     }
-  });
+  };
 
-  var Three = component({
+  var Three = {
     data() {
       return { click: 0 };
     },
@@ -714,9 +712,9 @@ test("Deep children behave properly.", t => {
         </div>
       );
     }
-  });
+  };
 
-  var el = render(Three, document.body);
+  var el = wigly.render(Three, document.body);
   t.deepEqual(el.textContent, "Click Count: 0");
 
   el.querySelector("button").click();
@@ -726,7 +724,7 @@ test("Deep children behave properly.", t => {
 test("Deep and nested children will update correctly.", async t => {
   var ctx;
 
-  var Destination = component({
+  var Destination = {
     data() {
       return { active: false, title: this.props.title };
     },
@@ -746,9 +744,9 @@ test("Deep and nested children will update correctly.", async t => {
         </div>
       );
     }
-  });
+  };
 
-  var Intermediate = component({
+  var Intermediate = {
     render() {
       return (
         <main>
@@ -756,9 +754,9 @@ test("Deep and nested children will update correctly.", async t => {
         </main>
       );
     }
-  });
+  };
 
-  var App = component({
+  var App = {
     data() {
       return { title: "title", msg: "msg" };
     },
@@ -773,9 +771,9 @@ test("Deep and nested children will update correctly.", async t => {
         </div>
       );
     }
-  });
+  };
 
-  var el = render(App, document.body);
+  var el = wigly.render(App, document.body);
   t.deepEqual(el.textContent, "");
 
   ctx.setState({ title: "working" });
@@ -783,7 +781,7 @@ test("Deep and nested children will update correctly.", async t => {
 });
 
 test("Breaking change for enabling typed (ts) components.", t => {
-  var Child = component({
+  var Child = {
     render() {
       return (
         <div>
@@ -791,16 +789,16 @@ test("Breaking change for enabling typed (ts) components.", t => {
         </div>
       );
     }
-  });
+  };
 
-  var Parent = component({
+  var Parent = {
     render() {
       // or without jsx: return Child({ hi:"Hi", children: "Evan" })
       return <Child hi="Hi">Evan</Child>;
     }
-  });
+  };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, "Hi, Evan!");
 });
 
@@ -835,7 +833,7 @@ test("Ensuring props and children aren't all fucked up.", t => {
     }
   };
 
-  var el = render(Parent, document.body);
+  var el = wigly.render(Parent, document.body);
   t.deepEqual(el.textContent, timesten("here we go 1").join(""));
 
   ctx.setState({ component: ChildTwo });

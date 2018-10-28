@@ -2,19 +2,17 @@ import test from "ava";
 import wigly from "wigly";
 import h from "wigly-jsx";
 import customizer from "wigly-customizer";
-import use from "../";
-
-var React = { createElement: h };
+import { use, useState } from "../";
 
 require("browser-env")();
 
 function render(root) {
-  var custom = customizer(use, { applyToChildren: true });
+  var custom = customizer(use);
   return wigly.render(custom(root), document.body);
 }
 
 test("Hello World!", t => {
-  function app({ useState }) {
+  function app() {
     var [msg] = useState("Hello, World!");
     return <div>{msg}</div>;
   }
@@ -22,21 +20,35 @@ test("Hello World!", t => {
   t.deepEqual(render(app).textContent, "Hello, World!");
 });
 
-test("useMount.", t => {
+test("useMount.", async t => {
   var mounted = false;
 
-  function app({ useMount }) {
+  var useMount = f => {
+    var [hasRendered, setRenderStatus] = useState(false);
+
+    // next tick
+    setTimeout(() => {
+      if (!hasRendered) {
+        setRenderStatus(true);
+        f();
+      }
+    }, 1);
+  };
+
+  function app() {
     useMount(() => (mounted = true));
     return <div>Hi!</div>;
   }
 
   render(app);
 
+  await new Promise(r => setTimeout(r, 1));
+
   t.deepEqual(mounted, true);
 });
 
 test("Click test.", t => {
-  function Button({ useState }) {
+  function Button() {
     var [count, set] = useState(0);
     return <button onclick={() => set(count + 1)}>Click count: {count}</button>;
   }
@@ -49,7 +61,7 @@ test("Click test.", t => {
 });
 
 test("Falsy values are correct.", t => {
-  function Button({ useState }) {
+  function Button() {
     var [status, set] = useState(false);
     return <button onclick={() => set(!status)}>active: {status ? "yes" : "no"}</button>;
   }

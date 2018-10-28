@@ -26,7 +26,7 @@ test("Hello World!", t => {
     render: self => ({ tag: Child, name: self.state.name })
   };
 
-  var fp = customizer(functional, { applyToChildren: true });
+  var fp = customizer(functional);
   var el = render(fp(App), document.body);
   t.deepEqual(el.textContent, "Hi, my name is Evan!");
 });
@@ -80,7 +80,7 @@ test("Make class based", t => {
     }
   }
 
-  var makeStateBased = customizer(makeClass, { applyToChildren: true });
+  var makeStateBased = customizer(makeClass);
   App = makeStateBased(App);
 
   var el = render(App, document.body);

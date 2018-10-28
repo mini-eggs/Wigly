@@ -1,6 +1,6 @@
 import test from "ava";
 import { render } from "wigly";
-import { h } from "../";
+import h from "../";
 
 var React = { createElement: h };
 

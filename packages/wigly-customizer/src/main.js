@@ -1,6 +1,6 @@
 var arr = item => (Array.isArray(item) ? item : [item]);
 
-export var customizer = (f, options) => {
+export var customizer = f => {
   var traverse = struct => {
     if (["number", "string"].indexOf(typeof struct) !== -1 || !struct) {
       return struct;
@@ -8,13 +8,9 @@ export var customizer = (f, options) => {
 
     return {
       ...struct,
-      ["children"]: arr(struct["children"] || []).map(
-        child => (options["applyToChildren"] ? traverse(child) : child)
-      ),
+      ["children"]: arr(struct["children"] || []).map(traverse),
       ["tag"]:
-        ["object", "function"].indexOf(typeof struct["tag"]) !== -1
-          ? customizer(f, options)(struct["tag"])
-          : struct["tag"]
+        ["object", "function"].indexOf(typeof struct["tag"]) !== -1 ? customizer(f)(struct["tag"]) : struct["tag"]
     };
   };
 

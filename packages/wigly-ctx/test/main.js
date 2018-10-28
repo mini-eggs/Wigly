@@ -1,5 +1,5 @@
 import test from "ava";
-import { render } from "wigly";
+import wigly from "wigly";
 import customizer from "wigly-customizer";
 import contextualize from "../";
 
@@ -18,9 +18,9 @@ test("Hello World!", t => {
     }
   };
 
-  var ctx = customizer(contextualize({ helloWorldMsg: "Hello, World!" }), { applyToChildren: true });
+  var ctx = customizer(contextualize({ helloWorldMsg: "Hello, World!" }));
   App = ctx(App);
 
-  var el = render(App, document.body);
+  var el = wigly.render(App, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
