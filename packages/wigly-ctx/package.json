@@ -1,7 +1,7 @@
 {
   "name": "wigly-ctx",
   "main": "dist/es5.js",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "scripts": {
     "start": "npm run clean && npm run es5 && npm run es6 && npm run gzip",
     "clean": "rm -rf dist",
