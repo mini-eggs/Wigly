@@ -1,19 +1,17 @@
 import test from "ava";
 import wigly from "wigly";
-import classer from "../";
-
-let React = { createElement: wigly.h };
+import { classer, Component } from "../";
 
 require("browser-env")();
 
 test("Hello World!", t => {
-  class Child {
+  class Child extends Component {
     render() {
       return <div>Hello, World!</div>;
     }
   }
 
-  class App {
+  class App extends Component {
     render() {
       return <Child />;
     }
@@ -24,19 +22,19 @@ test("Hello World!", t => {
 });
 
 test("Nested components work, duh.", t => {
-  class One {
+  class One extends Component {
     render() {
       return <div>test</div>;
     }
   }
 
-  class Two {
+  class Two extends Component {
     render() {
       return <div>{this.props.children}</div>;
     }
   }
 
-  class Three {
+  class Three extends Component {
     render() {
       return (
         <Two>

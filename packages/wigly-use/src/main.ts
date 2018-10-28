@@ -1,13 +1,16 @@
 var bag = new Map();
 var exec: any; // currently executing component
 
-export var use = (f: any): any => ({
-  ["data"]: () => ({ ["f"]: (props: any) => f(props) }),
-  ["render"]() {
-    exec = [this["state"]["f"], this];
-    return this["state"]["f"](this["props"]);
-  }
-});
+export var use = (f: any): any =>
+  typeof f === "function"
+    ? {
+        ["data"]: () => ({ ["f"]: (props: any) => f(props) }),
+        ["render"]() {
+          exec = [this["state"]["f"], this];
+          return this["state"]["f"](this["props"]);
+        }
+      }
+    : f;
 
 export var useState = (initial: any) => {
   var [key, ctx] = exec;
