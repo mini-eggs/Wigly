@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "main": "dist/es5.js",
   "scripts": {
     "start": "npm-run-all build:pre-clean build:tsickle build:gcc build:gzip build:types build:post-clean ",
