@@ -1,6 +1,5 @@
 import test from "ava";
 import wigly from "../";
-import h from "wigly-jsx";
 
 require("browser-env")();
 
@@ -838,4 +837,46 @@ test("Ensuring props and children aren't all fucked up.", t => {
 
   ctx.setState({ component: ChildTwo });
   t.deepEqual(el.textContent, "here we go 2");
+});
+
+test("Built in customizers.", t => {
+  var bag = new Map();
+  var exec;
+
+  var use = f => ({
+    ["data"]: () => ({ ["f"]: props => f(props) }),
+    ["render"]() {
+      exec = [this["state"]["f"], this];
+      return this["state"]["f"](this["props"]);
+    }
+  });
+
+  var useState = initial => {
+    var [key, ctx] = exec;
+    var current = bag.get(key) || new Map();
+    var potential = current.get(initial);
+    var value = typeof potential === "undefined" ? initial : potential;
+
+    return [
+      value,
+      next => {
+        bag.set(key, current.set(initial, next));
+        ctx.setState({});
+      }
+    ];
+  };
+
+  var update;
+
+  function App() {
+    var [msg, set] = useState("here we go");
+    update = set;
+    return <div>{msg}</div>;
+  }
+
+  var el = wigly.render(App, document.body, use);
+  t.deepEqual(el.textContent, "here we go");
+
+  update("working!");
+  t.deepEqual(el.textContent, "working!");
 });

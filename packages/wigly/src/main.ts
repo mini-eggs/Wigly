@@ -36,6 +36,8 @@ type ExtendedUserVDOM = {
   [key: string]: any;
 };
 
+export type Customizer = (item: any) => Component;
+
 export type Component = {
   data?(): Object;
   mounted?(element: Node): void;
@@ -193,6 +195,7 @@ let patch = (parent: Node, node: VDOM | string, element: Node | null, old: VDOM 
 
 let transform = (
   tree: UserVDOM | string | number | undefined | null | false,
+  customizers: Array<Customizer>,
   parentCallback: ((
     key: number,
     el: Node,
@@ -212,106 +215,112 @@ let transform = (
     return tree.toString();
   }
 
-  // component node
-  if (typeof tree.tag === "object") {
-    let el: Node;
-    let lastVDOM: VDOM | string;
-    let isActive = true;
-    let inst: Component = tree.tag;
-    let renderedChildren: Array<ExtendedUserVDOM> = []; // reference hacking
-    let render = inst["render"];
-    let state = getSeedState(tree);
-
-    let methods: { [key: string]: any } = {};
-    for (let k in inst) !SPECIAL[k] && (methods[k] = (...args: Array<any>) => inst[k].call(ctx(), ...args));
-
-    let lifecycle: LifecycleObject = {
-      mounted: (el: Node) => lifecycleWrap(inst["mounted"] || NOOP, 0, el),
-      updated: (el: Node) => lifecycleWrap(inst["updated"] || NOOP, 1, el),
-      destroyed: (el: Node) => lifecycleWrap(inst["destroyed"] || NOOP, 2, el)
+  if (typeof tree.tag === "string" || typeof tree.tag === "undefined") {
+    return {
+      tag: tree.tag || DEFAULT_VDOM.tag,
+      lifecycle: { ...DEFAULT_VDOM.lifecycle, ...tree.lifecycle },
+      attr: tree,
+      children: (Array.isArray(tree.children) ? tree.children : [tree.children]).map(item =>
+        transform(item, customizers, parentCallback, getSeedState)
+      )
     };
-
-    let ctx = (): { state: any; props: any; setState: any; [key: string]: any } => {
-      let partial = { ...methods, ["props"]: tree };
-      if (!state) state = (inst.data || NOOP).call(partial) || {};
-      return { ...partial, ["state"]: state, ["setState"]: setState };
-    };
-
-    /**
-     * Turns out seeds are fucking great.
-     * Also, this is near unreadable because it saves more bytes this way.
-     */
-    let setState = (f: any, cb: Function | undefined) => {
-      if (!isActive) return;
-      state = { ...state, ...(typeof f === "function" ? f(state) : f) };
-      let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
-      let next = transform(userVDOM, childCallback, findChildSeedState);
-      patch(el, next, el, lastVDOM);
-      lastVDOM = next;
-      if (cb) cb();
-    };
-
-    let lifecycleWrap = (f: (element: Node) => void, key: number, next: Node): void => {
-      el = next;
-      if (key === 2) isActive = false;
-      if (f) f.call(ctx(), el);
-      parentCallback(key, el, tree, lastVDOM, ctx);
-    };
-
-    let childCallback = (
-      key: number,
-      el: Node,
-      that: UserVDOM,
-      vdom: any,
-      childCtx: (() => ComponentContext)
-    ): void => {
-      // For the case of intermediate components that do not touch children.
-      parentCallback(key, el, that, vdom, childCtx);
-
-      // For the case of parent only has one node child; another component.
-      if (lastVDOM === vdom) {
-        if (key === 0) {
-          lifecycle.mounted(el);
-        } else if (key === 1) {
-          lifecycle.updated(el);
-        } else if (key === 2) {
-          lifecycle.destroyed(el);
-        }
-      }
-
-      // why tf does any of this work?
-      // We know why now!
-      // Only ONE component is rendering at a time (duh)
-      // other children don't care if they are wiped out
-      // when they are not currently rendering.
-      // But why is this an array? Because JavaScript references
-      // are weird.
-      if (key !== 0) renderedChildren = [];
-      if (key !== 2) renderedChildren.push({ ...that, ctx: childCtx });
-    };
-
-    let findChildSeedState = (find: UserVDOM): Object | void => {
-      return renderedChildren[0] && renderedChildren[0].tag === find.tag
-        ? renderedChildren[0].ctx().state
-        : getSeedState(find);
-    };
-
-    let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
-    let vdom = transform(userVDOM, childCallback, findChildSeedState);
-    return (lastVDOM = vdom);
   }
 
-  return {
-    tag: tree.tag || DEFAULT_VDOM.tag,
-    lifecycle: { ...DEFAULT_VDOM.lifecycle, ...tree.lifecycle },
-    attr: tree,
-    children: (Array.isArray(tree.children) ? tree.children : [tree.children]).map(item =>
-      transform(item, parentCallback, getSeedState)
-    )
+  // component node
+  for (let customizer of customizers) tree.tag = customizer(tree.tag); // Let users do what they want!
+
+  let el: Node;
+  let lastVDOM: VDOM | string;
+  let isActive = true;
+  let inst: Component = tree.tag;
+  let renderedChildren: Array<ExtendedUserVDOM> = []; // reference hacking
+  let render = inst["render"];
+  let state = getSeedState(tree);
+
+  let methods: { [key: string]: any } = {};
+  for (let k in inst) !SPECIAL[k] && (methods[k] = (...args: Array<any>) => inst[k].call(ctx(), ...args));
+
+  let lifecycle: LifecycleObject = {
+    mounted: (el: Node) => lifecycleWrap(inst["mounted"] || NOOP, 0, el),
+    updated: (el: Node) => lifecycleWrap(inst["updated"] || NOOP, 1, el),
+    destroyed: (el: Node) => lifecycleWrap(inst["destroyed"] || NOOP, 2, el)
   };
+
+  let ctx = (): { state: any; props: any; setState: any; [key: string]: any } => {
+    let partial = { ...methods, ["props"]: tree };
+    if (!state) state = (inst.data || NOOP).call(partial) || {};
+    return { ...partial, ["state"]: state, ["setState"]: setState };
+  };
+
+  /**
+   * Turns out seeds are fucking great.
+   * Also, this is near unreadable because it saves more bytes this way.
+   */
+  let setState = (f: any, cb: Function | undefined) => {
+    if (!isActive) return;
+    state = { ...state, ...(typeof f === "function" ? f(state) : f) };
+    let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
+    let next = transform(userVDOM, customizers, childCallback, findChildSeedState);
+    patch(el, next, el, lastVDOM);
+    lastVDOM = next;
+    if (cb) cb();
+  };
+
+  let lifecycleWrap = (f: (element: Node) => void, key: number, next: Node): void => {
+    el = next;
+    if (key === 2) isActive = false;
+    if (f) f.call(ctx(), el);
+    parentCallback(key, el, tree, lastVDOM, ctx);
+  };
+
+  let childCallback = (key: number, el: Node, that: UserVDOM, vdom: any, childCtx: (() => ComponentContext)): void => {
+    // For the case of intermediate components that do not touch children.
+    parentCallback(key, el, that, vdom, childCtx);
+
+    // For the case of parent only has one node child; another component.
+    if (lastVDOM === vdom) {
+      if (key === 0) {
+        lifecycle.mounted(el);
+      } else if (key === 1) {
+        lifecycle.updated(el);
+      } else if (key === 2) {
+        lifecycle.destroyed(el);
+      }
+    }
+
+    // why tf does any of this work?
+    // We know why now!
+    // Only ONE component is rendering at a time (duh)
+    // other children don't care if they are wiped out
+    // when they are not currently rendering.
+    // But why is this an array? Because JavaScript references
+    // are weird.
+    if (key !== 0) renderedChildren = [];
+    if (key !== 2) renderedChildren.push({ ...that, ctx: childCtx });
+  };
+
+  let findChildSeedState = (find: UserVDOM): Object | void => {
+    return renderedChildren[0] && renderedChildren[0].tag === find.tag
+      ? renderedChildren[0].ctx().state
+      : getSeedState(find);
+  };
+
+  let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
+  let vdom = transform(userVDOM, customizers, childCallback, findChildSeedState);
+  return (lastVDOM = vdom);
 };
 
-export var render = (tag: Component, el: Node): Node => patch(el, transform({ tag }, NOOP, NOOP), null, null);
+export let render = (tag: Component, el: Node, ...customizers: Array<Customizer>): Node => {
+  return patch(el, transform({ tag }, customizers, NOOP, NOOP), null, null);
+};
+
+export let h = (f: any, props: any, ...children: Array<any>): UserVDOM => ({
+  tag: f,
+  children: [].concat.apply([], children), // flat
+  ...props
+});
 
 // @ts-ignore
 self["render"] = render;
+// @ts-ignore
+self["h"] = h;

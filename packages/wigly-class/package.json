@@ -11,18 +11,14 @@
     "test": "ava"
   },
   "peerDependencies": {
-    "wigly": "^0.1.x",
-    "wigly-customizer": "^0.1.x",
-    "wigly-jsx": "^0.1.x"
+    "wigly": "^0.1.x"
   },
   "devDependencies": {
     "@babel/preset-react": "^7.0.0-rc.3",
     "ava": "1.0.0-beta.7",
     "browser-env": "^3.2.5",
     "google-closure-compiler-linux": "^20180805.0.0",
-    "wigly": "^0.1.x",
-    "wigly-customizer": "^0.1.x",
-    "wigly-jsx": "^0.1.x"
+    "wigly": "^0.1.x"
   },
   "ava": {
     "babel": {

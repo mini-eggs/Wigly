@@ -1,15 +1,8 @@
 import test from "ava";
 import wigly from "wigly";
-import h from "wigly-jsx";
-import customizer from "wigly-customizer";
 import { use, useState } from "../";
 
 require("browser-env")();
-
-function render(root) {
-  var custom = customizer(use);
-  return wigly.render(custom(root), document.body);
-}
 
 test("Hello World!", t => {
   function app() {
@@ -17,7 +10,8 @@ test("Hello World!", t => {
     return <div>{msg}</div>;
   }
 
-  t.deepEqual(render(app).textContent, "Hello, World!");
+  var el = wigly.render(app, document.body, use);
+  t.deepEqual(el.textContent, "Hello, World!");
 });
 
 test("useMount.", async t => {
@@ -40,7 +34,7 @@ test("useMount.", async t => {
     return <div>Hi!</div>;
   }
 
-  render(app);
+  wigly.render(app, document.body, use);
 
   await new Promise(r => setTimeout(r, 1));
 
@@ -53,7 +47,7 @@ test("Click test.", t => {
     return <button onclick={() => set(count + 1)}>Click count: {count}</button>;
   }
 
-  var el = render(Button);
+  var el = wigly.render(Button, document.body, use);
   t.deepEqual(el.textContent, "Click count: 0");
 
   el.click();
@@ -66,7 +60,7 @@ test("Falsy values are correct.", t => {
     return <button onclick={() => set(!status)}>active: {status ? "yes" : "no"}</button>;
   }
 
-  var el = render(Button);
+  var el = wigly.render(Button, document.body, use);
   t.deepEqual(el.textContent, "active: no");
 
   el.click();

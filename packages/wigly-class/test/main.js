@@ -1,10 +1,9 @@
 import test from "ava";
 import wigly from "wigly";
-import h from "wigly-jsx";
-import customizer from "wigly-customizer";
 import classer from "../";
 
-var React = { createElement: h };
+let React = { createElement: wigly.h };
+
 require("browser-env")();
 
 test("Hello World!", t => {
@@ -20,8 +19,7 @@ test("Hello World!", t => {
     }
   }
 
-  var custom = customizer(classer);
-  var el = wigly.render(custom(App), document.body);
+  var el = wigly.render(App, document.body, classer);
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
@@ -48,7 +46,6 @@ test("Nested components work, duh.", t => {
     }
   }
 
-  var custom = customizer(classer);
-  var el = wigly.render(custom(Three), document.body);
+  var el = wigly.render(Three, document.body, classer);
   t.deepEqual(el.textContent, "test");
 });

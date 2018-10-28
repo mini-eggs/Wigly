@@ -8,17 +8,15 @@
     "build:types": "tsc -d && cp src/main.d.ts dist/es6.d.ts && mv src/main.d.ts dist/es5.d.ts",
     "build:tsickle": "tsickle",
     "build:gcc": "npm-run-all build:gcc:es5 build:gcc:es6",
-    "build:gcc:es5": "node_modules/google-closure-compiler-linux/compiler --output_wrapper '(function(){var self=typeof module!='undefined'?module.exports:(this.wiglyUse={});%output%})()' --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
-    "build:gcc:es6": "node_modules/google-closure-compiler-linux/compiler --output_wrapper '(()=>{var self=typeof module!='undefined'?module.exports:(this.wiglyUse={});%output%})()' --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
+    "build:gcc:es5": "node_modules/google-closure-compiler-linux/compiler --output_wrapper '(function(){var self=typeof module!=\"undefined\"?module.exports:(this.wiglyUse={});%output%})()' --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es5.js 'src/**.js'",
+    "build:gcc:es6": "node_modules/google-closure-compiler-linux/compiler --output_wrapper '(()=>{var self=typeof module!=\"undefined\"?module.exports:(this.wiglyUse={});%output%})()' --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level ADVANCED_OPTIMIZATIONS --js_output_file=dist/es6.js 'src/**.js'",
     "build:gzip": "gzip dist/* -k -f",
     "build:post-clean": "rm src/**.js",
     "test": "ava",
     "size": "wc -c dist/es5.js.gz | cut -d' ' -f1 && wc -c dist/es6.js.gz | cut -d' ' -f1"
   },
   "peerDependencies": {
-    "wigly": "^0.1.x",
-    "wigly-customizer": "^0.1.x",
-    "wigly-jsx": "^0.1.x"
+    "wigly": "^0.1.x"
   },
   "devDependencies": {
     "@babel/plugin-transform-react-jsx": "^7.0.0",
@@ -28,9 +26,7 @@
     "npm-run-all": "^4.1.3",
     "tsickle": "^0.33.1",
     "typescript": "^3.1.3",
-    "wigly": "^0.1.x",
-    "wigly-customizer": "^0.1.x",
-    "wigly-jsx": "^0.1.x"
+    "wigly": "^0.1.x"
   },
   "ava": {
     "babel": {
@@ -39,7 +35,7 @@
           [
             "@babel/plugin-transform-react-jsx",
             {
-              "pragma": "h"
+              "pragma": "wigly.h"
             }
           ]
         ]
