@@ -1,4 +1,5 @@
 var bag = new Map();
+var count: number; // subkey to keep track of mulitple useState in component
 var exec: any; // currently executing component
 
 type State = {
@@ -28,6 +29,7 @@ export var use = (f: any) =>
         },
 
         ["render"](): any {
+          count = 0;
           exec = this;
           return ((this as any)["state"] as State).component((this as any)["props"]);
         }
@@ -36,15 +38,16 @@ export var use = (f: any) =>
 
 export var useState = (initial: any) => {
   var key = (exec["state"] as State).component;
-  var update = exec["setState"];
+  var subkey = ++count;
+  var updater = exec["setState"];
   var current = bag.get(key) || new Map();
-  var potential = current.get(initial);
+  var potential = current.get(subkey);
   var value = typeof potential === "undefined" ? initial : potential;
   return [
     value,
     (next: any) => {
-      bag.set(key, current.set(initial, next));
-      update({});
+      bag.set(key, current.set(subkey, next));
+      updater({});
     }
   ];
 };
