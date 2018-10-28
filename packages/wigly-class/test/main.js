@@ -47,3 +47,22 @@ test("Nested components work, duh.", t => {
   var el = wigly.render(Three, document.body, classer);
   t.deepEqual(el.textContent, "test");
 });
+
+test("HOC.", t => {
+  var WithName = name => Child => {
+    return class extends Component {
+      render() {
+        return <Child name="Evan" />;
+      }
+    };
+  };
+
+  class App extends Component {
+    render() {
+      return <div>Hi, {this.props.name}!</div>;
+    }
+  }
+
+  var el = wigly.render(WithName("Evan")(App), document.body, classer);
+  t.deepEqual(el.textContent, "Hi, Evan!");
+});
