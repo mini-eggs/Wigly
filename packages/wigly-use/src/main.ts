@@ -4,24 +4,30 @@ type State = {
   cleaners: Array<Function>;
 };
 
-declare type Context = {
-  call(e: Node): void;
-  clean(): void;
-  update(): void;
+declare interface SubContext {
   setState(next: Object): void;
   state: State;
   props: Object;
-};
+}
 
-declare interface Component {
+interface Context extends SubContext {
+  call(e: Node): void;
+  clean(): void;
+  update(): void;
+}
+
+declare interface SubComponent {
   data: any;
   mounted: any;
   updated: any;
   destroyed: any;
-  call?: any;
-  clean?: any;
-  update?: any;
-  render?: any;
+  render: any;
+}
+
+interface Component extends SubComponent {
+  call: any;
+  clean: any;
+  update: any;
 }
 
 var iter = 0;
@@ -81,14 +87,16 @@ export var use = (f: Function | Component): Component =>
     : f;
 
 export var useState = (initial: any) => {
+  var { update, state } = exec;
   var current = ++iter;
-  var potential = exec.state.values.get(current);
+  var potential = state.values.get(current);
   var value = typeof potential === "undefined" ? initial : potential;
+
   return [
     value,
     (next: any) => {
-      exec.state.values.set(current, next);
-      exec.update();
+      state.values.set(current, next);
+      update();
     }
   ];
 };

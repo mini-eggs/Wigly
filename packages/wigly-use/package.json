@@ -3,7 +3,7 @@
   "version": "0.1.27",
   "main": "dist/es5.js",
   "scripts": {
-    "start": "npm-run-all build:pre-clean build:tsickle build:gcc build:gzip build:types build:post-clean",
+    "start": "npm-run-all build:pre-clean build:tsickle build:gcc build:gzip build:types",
     "build:pre-clean": "rm -rf dist && mkdir dist",
     "build:types": "tsc -d && cp src/main.d.ts dist/es6.d.ts && mv src/main.d.ts dist/es5.d.ts",
     "build:tsickle": "tsickle --externs externs/extern.js",

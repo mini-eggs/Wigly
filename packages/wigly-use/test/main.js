@@ -6,7 +6,7 @@ require("browser-env")();
 
 var sleep = (t = 10) => new Promise(r => setTimeout(r, t));
 
-test.serial("Hello World!", t => {
+test("Hello World!", t => {
   function app() {
     var [msg] = useState("Hello, World!");
     return <div>{msg}</div>;
@@ -16,7 +16,7 @@ test.serial("Hello World!", t => {
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
-test.serial("Click test.", async t => {
+test("Click test.", async t => {
   function Button() {
     var [count, set] = useState(0);
     return <button onclick={() => set(count + 1)}>Click count: {count}</button>;
@@ -31,7 +31,7 @@ test.serial("Click test.", async t => {
   t.deepEqual(el.textContent, "Click count: 1");
 });
 
-test.serial("Falsy values are correct.", async t => {
+test("Falsy values are correct.", async t => {
   function Button() {
     var [status, set] = useState(false);
     return <button onclick={() => set(!status)}>active: {status ? "yes" : "no"}</button>;
@@ -56,7 +56,7 @@ test.serial("Falsy values are correct.", async t => {
   t.deepEqual(el.textContent, "active: yes");
 });
 
-test.serial("Test effects.", async t => {
+test("Test effects.", async t => {
   var effected = 0;
   var mounted = 0;
 
@@ -96,7 +96,7 @@ test.serial("Test effects.", async t => {
   t.deepEqual(mounted, 1);
 });
 
-test.serial("useMount", async t => {
+test("useMount", async t => {
   var callCount = 0;
   var setter;
 
