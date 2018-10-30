@@ -13,11 +13,16 @@ type VDOM = {
   children: Array<VDOM | string>;
 };
 
-type ComponentContext = {
+declare interface PartialContext {
+  props: Object;
+  [key: string]: any;
+}
+
+declare interface Context extends PartialContext {
   props: Object;
   state: Object;
-  [key: string]: any;
-};
+  setState: Function;
+}
 
 export type UserVDOM = {
   tag?: Component | string;
@@ -47,18 +52,29 @@ export type Component = {
   [key: string]: any;
 };
 
+declare interface SpecialKeys {
+  tag: true;
+  children: true;
+  data: true;
+  mounted: true;
+  updated: true;
+  destroyed: true;
+  render: true;
+  [key: string]: boolean;
+}
+
 // CONSTANTS
 
 let NOOP = () => {};
 
-let SPECIAL: { [key: string]: boolean } = {
-  ["tag"]: true,
-  ["children"]: true,
-  ["data"]: true,
-  ["mounted"]: true,
-  ["updated"]: true,
-  ["destroyed"]: true,
-  ["render"]: true
+let SPECIAL: SpecialKeys = {
+  tag: true,
+  children: true,
+  data: true,
+  mounted: true,
+  updated: true,
+  destroyed: true,
+  render: true
 };
 
 let DEFAULT_VDOM: VDOM = {
@@ -196,13 +212,7 @@ let patch = (parent: Node, node: VDOM | string, element: Node | null, old: VDOM 
 let transform = (
   tree: UserVDOM | string | number | undefined | null | false,
   customizers: Array<Customizer>,
-  parentCallback: ((
-    key: number,
-    el: Node,
-    that: UserVDOM,
-    vdom: VDOM | string,
-    childCtx: (() => ComponentContext)
-  ) => void),
+  parentCallback: ((key: number, el: Node, that: UserVDOM, vdom: VDOM | string, childCtx: (() => Context)) => void),
   getSeedState: ((component: UserVDOM) => Object | void)
 ): VDOM | string => {
   // conditional node
@@ -234,22 +244,22 @@ let transform = (
   let isActive = true;
   let inst: Component = tree.tag;
   let renderedChildren: Array<ExtendedUserVDOM> = []; // reference hacking
-  let render = inst["render"];
   let state = getSeedState(tree);
 
   let methods: { [key: string]: any } = {};
   for (let k in inst) !SPECIAL[k] && (methods[k] = (...args: Array<any>) => inst[k].call(ctx(), ...args));
 
   let lifecycle: LifecycleObject = {
-    mounted: (el: Node) => lifecycleWrap(inst["mounted"] || NOOP, 0, el),
-    updated: (el: Node) => lifecycleWrap(inst["updated"] || NOOP, 1, el),
-    destroyed: (el: Node) => lifecycleWrap(inst["destroyed"] || NOOP, 2, el)
+    mounted: (el: Node) => lifecycleWrap(inst.mounted || NOOP, 0, el),
+    updated: (el: Node) => lifecycleWrap(inst.updated || NOOP, 1, el),
+    destroyed: (el: Node) => lifecycleWrap(inst.destroyed || NOOP, 2, el)
   };
 
-  let ctx = (): { state: any; props: any; setState: any; [key: string]: any } => {
-    let partial = { ...methods, ["props"]: tree };
+  let ctx = (): Context => {
+    let partial: PartialContext = { ...methods, ["props"]: tree };
     if (!state) state = (inst.data || NOOP).call(partial) || {};
-    return { ...partial, ["state"]: state, ["setState"]: setState };
+    // @ts-ignore // The if statement above catches this.
+    return { ...partial, state, setState };
   };
 
   /**
@@ -259,7 +269,7 @@ let transform = (
   let setState = (f: any, cb: Function | undefined) => {
     if (!isActive) return;
     state = { ...state, ...(typeof f === "function" ? f(state) : f) };
-    let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
+    let userVDOM: UserVDOM = { ...inst.render.call(ctx()), lifecycle: lifecycle };
     let next = transform(userVDOM, customizers, childCallback, findChildSeedState);
     patch(el, next, el, lastVDOM);
     lastVDOM = next;
@@ -273,7 +283,7 @@ let transform = (
     parentCallback(key, el, tree, lastVDOM, ctx);
   };
 
-  let childCallback = (key: number, el: Node, that: UserVDOM, vdom: any, childCtx: (() => ComponentContext)): void => {
+  let childCallback = (key: number, el: Node, that: UserVDOM, vdom: any, childCtx: (() => Context)): void => {
     // For the case of intermediate components that do not touch children.
     parentCallback(key, el, that, vdom, childCtx);
 
@@ -305,7 +315,7 @@ let transform = (
       : getSeedState(find);
   };
 
-  let userVDOM: UserVDOM = { ...render.call(ctx()), lifecycle: lifecycle };
+  let userVDOM: UserVDOM = { ...inst.render.call(ctx()), lifecycle: lifecycle };
   let vdom = transform(userVDOM, customizers, childCallback, findChildSeedState);
   return (lastVDOM = vdom);
 };
