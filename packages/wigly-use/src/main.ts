@@ -1,58 +1,99 @@
-var bag = new Map();
-var count: number; // subkey to keep track of mulitple useState in component
-var exec: any; // currently executing component
-
 type State = {
-  component: Function;
+  values: Map<number, any>;
   effects: Array<Function>;
+  cleaners: Array<Function>;
 };
 
-export var use = (f: any) =>
+declare type Context = {
+  call(e: Node): void;
+  clean(): void;
+  update(): void;
+  setState(next: Object): void;
+  state: State;
+  props: Object;
+};
+
+declare interface Component {
+  data: any;
+  mounted: any;
+  updated: any;
+  destroyed: any;
+  call?: any;
+  clean?: any;
+  update?: any;
+  render?: any;
+}
+
+var iter = 0;
+var exec: Context;
+
+var debounce = (f: Function) => {
+  var timer: any;
+  return function(this: any) {
+    clearTimeout(timer);
+    timer = setTimeout(f.bind(this), 1, arguments);
+  };
+};
+
+export var use = (f: Function | Component): Component =>
   typeof f === "function"
     ? {
-        ["data"]: (): State => ({
-          component: (props: any) => f(props),
-          effects: []
+        data: (): State => ({
+          values: new Map(),
+          effects: [],
+          cleaners: []
         }),
 
-        ["mounted"](e: any): void {
-          this["call"](e);
+        mounted(this: Context, e: Node) {
+          this.call(e);
         },
 
-        ["updated"](e: any): void {
-          this["call"](e);
+        updated(this: Context, e: Node) {
+          this.clean();
+          this.call(e);
         },
 
-        ["call"](e: any): void {
+        destroyed(this: Context) {
+          this.clean();
+        },
+
+        call(this: Context, e: Node) {
           var f;
-          while ((f = ((this as any)["state"] as State).effects.shift())) f(e);
+          while ((f = this.state.effects.shift())) {
+            this.state.cleaners.push(f(e) || (() => {}));
+          }
         },
 
-        ["render"](): any {
-          count = 0;
+        clean(this: Context) {
+          this.state.cleaners.forEach(f => f());
+        },
+
+        update: debounce(function(this: Context) {
+          this.setState({});
+        }),
+
+        render(this: Context) {
+          iter = 0;
           exec = this;
-          return ((this as any)["state"] as State).component((this as any)["props"]);
+          return f(this.props);
         }
       }
     : f;
 
 export var useState = (initial: any) => {
-  var key = (exec["state"] as State).component;
-  var subkey = ++count;
-  var updater = exec["setState"];
-  var current = bag.get(key) || new Map();
-  var potential = current.get(subkey);
+  var current = ++iter;
+  var potential = exec.state.values.get(current);
   var value = typeof potential === "undefined" ? initial : potential;
   return [
     value,
     (next: any) => {
-      bag.set(key, current.set(subkey, next));
-      updater({});
+      exec.state.values.set(current, next);
+      exec.update();
     }
   ];
 };
 
-export var useEffect = (f: Function) => (exec["state"] as State).effects.push(f);
+export var useEffect = (f: Function) => exec.state.effects.push(f);
 
 // @ts-ignore
 self["use"] = use;
