@@ -4,3 +4,4 @@ lerna-debug.log
 build
 externs
 user
+.cache
