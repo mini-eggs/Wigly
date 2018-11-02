@@ -1,17 +1,16 @@
 import test from "ava";
-import wigly from "../";
 
-let { h, render, useState, useEffect } = wigly;
+let { h, render, useState, useEffect } = require("../");
 
 require("browser-env")();
 
-test.serial("'Hello, World!'", t => {
+test("'Hello, World!'", t => {
   let App = () => <div>Hello, World!</div>;
   let el = render(<App />, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
-test.serial("'useEffect' as mount.", t => {
+test("'useEffect' as mount.", t => {
   let mountedCount = 0;
   let set;
 
@@ -28,7 +27,7 @@ test.serial("'useEffect' as mount.", t => {
   t.deepEqual(mountedCount, 1);
 });
 
-test.serial("'useEffect' as mount, destroyed func.", t => {
+test("'useEffect' as mount, destroyed func.", t => {
   let destroyCount = 0;
   let set;
 
