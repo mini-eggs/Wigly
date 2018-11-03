@@ -1,2 +1,8 @@
 test
-lerna-debug.log
+lerna-debug.log 
+build
+externs
+user
+.cache
+src
+example

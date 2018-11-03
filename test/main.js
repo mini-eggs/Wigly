@@ -1,16 +1,17 @@
 import test from "ava";
-
-let { h, render, useState, useEffect } = require("../");
+import { h, render, useState, useEffect } from "../";
 
 require("browser-env")();
 
-test("'Hello, World!'", t => {
+let sleep = (t = 1) => new Promise(r => setTimeout(r, t)); // Update "chunks" are pool'd together.
+
+test("'Hello, World!'", async t => {
   let App = () => <div>Hello, World!</div>;
   let el = render(<App />, document.body);
   t.deepEqual(el.textContent, "Hello, World!");
 });
 
-test("'useEffect' as mount.", t => {
+test("'useEffect' as mount.", async t => {
   let mountedCount = 0;
   let set;
 
@@ -22,12 +23,16 @@ test("'useEffect' as mount.", t => {
   };
 
   render(<App />, document.body);
+
   t.deepEqual(mountedCount, 1);
+
   set(1);
+  await sleep();
+
   t.deepEqual(mountedCount, 1);
 });
 
-test("'useEffect' as mount, destroyed func.", t => {
+test("'useEffect' as mount, destroyed func.", async t => {
   let destroyCount = 0;
   let set;
 
@@ -43,7 +48,11 @@ test("'useEffect' as mount, destroyed func.", t => {
   };
 
   render(<App />, document.body);
+
   t.deepEqual(destroyCount, 0);
+
   set(1);
+  await sleep();
+
   t.deepEqual(destroyCount, 1);
 });

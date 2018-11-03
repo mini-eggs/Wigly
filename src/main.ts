@@ -1,6 +1,7 @@
 interface ExtendedNode extends HTMLElement {
   events: { [key: string]: any };
-  data: { [key: string]: any };
+  created: any;
+  killed: any;
 }
 
 interface State {
@@ -45,6 +46,14 @@ interface Env {
   state?: State;
 }
 
+let debounce = (f: Function) => {
+  let instance: any;
+  return (...args: Array<any>) => {
+    clearTimeout(instance);
+    instance = setTimeout(f, 1, ...args);
+  };
+};
+
 let useState: any;
 let useEffect: any;
 
@@ -70,26 +79,23 @@ let transform = (item: Transformable, cb: Callback = () => {}, env: GetEnv = () 
     let stateCount = 0;
     let effectCount = 0;
 
+    let update = debounce(() => patch(target as ExtendedNode, create(work(state))));
+
     useState = (initial: any) => {
       let key = stateCount++;
       let value = state[key];
-
-      if (value === undefined) {
-        value = initial;
-      }
+      if (value === undefined) value = initial;
 
       return [
         value,
         (next: any) => {
-          let el = create(work({ ...state, [key]: next }));
-          target && patch(target, el);
+          state[key] = next;
+          update();
         }
       ];
     };
 
-    useEffect = (f: Function, uniquers: Array<any>) => {
-      effects[effectCount++] = { f, uniquers };
-    };
+    useEffect = (f: Function, uniquers: Array<any>) => (effects[effectCount++] = { f, uniquers });
 
     let hospital: Callback = child => {
       cb(child);
@@ -119,14 +125,11 @@ let transform = (item: Transformable, cb: Callback = () => {}, env: GetEnv = () 
     return {
       ...res,
       created: (el: HTMLElement, force = false) => {
-        if (!target || force) {
-          target = el as ExtendedNode;
-        }
-
+        if (!target || force) target = el as ExtendedNode;
         cb({ item: item as Component, state, el: target, key: (props || {}).key });
-
         for (let index in effects) {
           let { f, uniquers } = effects[index];
+          uniquers = Array.isArray(uniquers) ? uniquers : [uniquers];
           let last = state.effectKeys[index] || [];
           if (uniquers.join() !== last.join() || uniquers.length === 0) {
             let cleaner = state.effectCleanups[index];
@@ -137,12 +140,8 @@ let transform = (item: Transformable, cb: Callback = () => {}, env: GetEnv = () 
         }
       },
       killed: () => {
-        // delete target;
         cb({ item: item as Component, key: (props || {}).key });
-
-        for (let cleaner of state.effectCleanups) {
-          cleaner && cleaner();
-        }
+        for (let cleaner of state.effectCleanups) cleaner && cleaner();
       }
     };
   };
@@ -155,9 +154,8 @@ let render = (root: Component, el: HTMLElement): HTMLElement => el.appendChild(c
 let create = ({ func, props, childs = [], created = () => {}, killed = () => {} }: VDOM): ExtendedNode => {
   let el = document.createElement(func) as ExtendedNode;
   el.events = {};
-  el.data = {};
-  el.data.created = created;
-  el.data.killed = killed;
+  el.created = created;
+  el.killed = killed;
 
   for (let key in props) {
     let value = props[key];
@@ -189,10 +187,8 @@ let create = ({ func, props, childs = [], created = () => {}, killed = () => {} 
 };
 
 let kill = (tree: ExtendedNode) => {
-  if (tree.data.killed) tree.data.killed();
-  for (let child of tree.childNodes) {
-    kill(child as ExtendedNode);
-  }
+  tree.killed && tree.killed();
+  for (let child of tree.childNodes) kill(child as ExtendedNode);
 };
 
 let patch = (target: ExtendedNode, next: ExtendedNode) => {
@@ -200,8 +196,9 @@ let patch = (target: ExtendedNode, next: ExtendedNode) => {
     target.removeEventListener(key, target.events[key]);
   }
 
-  if (next.nodeName.toUpperCase() !== target.nodeName.toUpperCase()) {
-    // kill(target); // do this above
+  if (next.nodeName !== target.nodeName) {
+    console.log("replacing 1");
+    console.log(target);
     // @ts-ignore
     return target.replaceWith(next);
   }
@@ -223,10 +220,8 @@ let patch = (target: ExtendedNode, next: ExtendedNode) => {
     }
   }
 
-  if ((target.innerHTML || "").trim() === (target.textContent || "").trim()) {
-    // next.data.created(next, true);
-    // @ts-ignore
-    return target.replaceWith(next);
+  if (target.innerHTML === target.textContent) {
+    return (target.textContent = next.textContent);
   }
 
   let nextC = [...next.childNodes];
@@ -245,7 +240,7 @@ let patch = (target: ExtendedNode, next: ExtendedNode) => {
     if (pastC[i]) {
       patch(pastC[i] as ExtendedNode, nextC[i] as ExtendedNode);
     } else {
-      (nextC[i] as ExtendedNode).data.created(nextC[i], true);
+      (nextC[i] as ExtendedNode).created(nextC[i], true);
       target.appendChild(nextC[i]);
     }
   }
@@ -254,7 +249,7 @@ let patch = (target: ExtendedNode, next: ExtendedNode) => {
 let h = (func: string | FunctionComponent, props: Object, ...childs: Array<string | FunctionComponent>): Component => ({
   func,
   props,
-  childs: [].concat.apply([], childs)
+  childs
 });
 
 // @ts-ignore
@@ -266,6 +261,6 @@ self["render"] = render;
 // @ts-ignore
 self["useState"] = val => useState(val);
 // @ts-ignore
-self["useEffect"] = (f, ...uniquers) => useEffect(f, [].concat.apply([], uniquers));
+self["useEffect"] = (...args) => useEffect(...args);
 
-// export default self;
+export default self;
