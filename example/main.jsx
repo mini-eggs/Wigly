@@ -1,5 +1,5 @@
 // @jsx h
-import { h, render, useState, useEffect } from "../dist/main.js";
+import { h, render, useState, useEffect } from "../";
 
 let Test = ({ other }) => {
   let [msg, setMsg] = useState("wow!");
