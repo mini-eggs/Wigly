@@ -2,9 +2,14 @@
   "name": "wigly",
   "version": "0.3.0",
   "scripts": {
-    "example": "parcel example/index.html"
+    "example": "parcel example/index.html",
+    "build": "npm run build:gcc && npm run build:gzip",
+    "build:gcc": "java -jar ./node_modules/google-closure-compiler/compiler.jar --module_resolution WEBPACK --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --externs externs/superfine.js --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/main.js 'src/**.js'",
+    "build:gzip": "gzip dist/* -k -f",
+    "size": "wc -c dist/*"
   },
   "devDependencies": {
+    "google-closure-compiler": "^20181008.0.0",
     "parcel-bundler": "^1.10.3"
   },
   "dependencies": {

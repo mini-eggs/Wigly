@@ -1,13 +1,81 @@
-import * as superfine from "superfine";
+/**
+ * TYPES
+ */
 
-let hookError = () => {
-  throw new Error("May only call hooks from within components.");
-};
+/**
+ * @record
+ */
+function ComponentEnvironment() {}
+/** @type {?} */
+ComponentEnvironment.prototype.type;
+/** @type {?} */
+ComponentEnvironment.prototype.props;
+/** @type {?} */
+ComponentEnvironment.prototype.vars;
+/** @type {?} */
+ComponentEnvironment.prototype.childs;
+/** @type {?} */
+ComponentEnvironment.prototype.node;
+/** @type {?} */
+ComponentEnvironment.prototype.lastVDOM;
+/** @type {?} */
+ComponentEnvironment.prototype.effects;
+/** @type {?} */
+ComponentEnvironment.prototype.isActive;
 
-let useState = hookError;
-let useEffect = hookError;
-let getSeedState = () => ({});
-let parentCallback = () => {};
+/**
+ * @record
+ */
+function SuperFineArgs() {}
+/** @export @type {?} */
+SuperFineArgs.prototype.props;
+
+/**
+ * @record
+ */
+function InternalLifecycle() {}
+/** @export @type {?} */
+InternalLifecycle.prototype.oncreate;
+/** @export @type {?} */
+InternalLifecycle.prototype.onupdate;
+/** @export @type {?} */
+InternalLifecycle.prototype.onremove;
+/** @export @type {?} */
+InternalLifecycle.prototype.ondestroy;
+
+/**
+ * @record
+ */
+function VDOM() {}
+/** @export @type {InternalLifecycle} */
+VDOM.prototype.props;
+
+/**
+ * @record
+ */
+function Effect() {}
+/** @type {?} */
+Effect.prototype.f;
+/** @type {?} */
+Effect.prototype.unique;
+/** @type {?} */
+Effect.prototype.last;
+/** @type {?} */
+Effect.prototype.cb;
+
+/**
+ * VARS
+ */
+
+let NOOP = () => {};
+let actualUseState = NOOP;
+let actualUseEffect = NOOP;
+let getSeedState = NOOP;
+let parentCallback = NOOP;
+
+/**
+ * FUNCTIONS
+ */
 
 let h = (type, props, ...rest) => {
   if (typeof type !== "function") {
@@ -16,15 +84,17 @@ let h = (type, props, ...rest) => {
 
   let originalGetSeedState = getSeedState;
   let originalParentCallback = parentCallback;
-  let seed = originalGetSeedState(type, props);
+
   let stateCount = 0;
   let effectCount = 0;
 
-  let { state = {}, effects = [], children = [], element, lastVDOM } = seed || {};
+  /** @type {ComponentEnvironment} */
+  let seed = originalGetSeedState(type, props) || {};
+  let { isActive = true, vars = {}, effects = [], childs = [], node, lastVDOM } = seed;
 
   let internalUseState = init => {
     let key = stateCount++;
-    let value = state[key];
+    let value = vars[key];
 
     if (value === undefined) {
       value = init;
@@ -33,7 +103,7 @@ let h = (type, props, ...rest) => {
     return [
       value,
       next => {
-        state[key] = next;
+        vars[key] = next;
         save();
         update();
       }
@@ -42,72 +112,107 @@ let h = (type, props, ...rest) => {
 
   let internalUseEffect = (f, unique) => {
     let key = effectCount++;
-    effects[key] = { ...effects[key], f, unique };
+    /** @type {Effect} */
+    let effect = { ...effects[key], f, unique };
+    effects[key] = effect;
   };
 
   let internalGetSeedState = (find, props) => {
-    for (let child of children) {
+    for (let index in childs) {
+      /** @type {ComponentEnvironment} */
+      let child = childs[index];
       let key = (child.props || {}).key;
       if (child.type === find && key === (props || {}).key) {
-        return child;
+        return { ...child, isActive };
       }
     }
   };
 
+  // TODO: it's bogus.
   let internalParentCallback = data => {
-    children.push(data);
+    if (!data) {
+      childs = [];
+      return;
+    }
+    childs.push(data);
   };
 
   return work();
 
   function work() {
-    useState = internalUseState;
-    useEffect = internalUseEffect;
+    actualUseState = internalUseState;
+    actualUseEffect = internalUseEffect;
     getSeedState = internalGetSeedState;
     parentCallback = internalParentCallback;
 
-    let res = type({ props });
+    /** @type {SuperFineArgs} */
+    let args = { props };
+
+    /** @type {VDOM} */
+    let res = type(args);
 
     stateCount = 0;
     effectCount = 0;
-    useState = hookError;
-    useEffect = hookError;
+    actualUseState = NOOP;
+    actualUseEffect = NOOP;
     getSeedState = originalGetSeedState;
     parentCallback = originalParentCallback;
 
-    return (lastVDOM = { ...res, props: { ...res.props, oncreate, onupdate, ondestroy } });
+    /** @type {VDOM} */
+    let vdom = { ...res, props: { ...res.props, oncreate, onupdate, onremove, ondestroy } };
+
+    return (lastVDOM = vdom);
   }
 
   function oncreate(el) {
-    element = el;
+    node = el;
     save();
-    callEffects(true);
+    callEffects();
   }
 
   function onupdate() {
-    callEffects(true);
+    callEffects();
+  }
+
+  function onremove(_, remove) {
+    isActive = false;
+    callEffects();
+    update();
+    remove();
+    reset();
   }
 
   function ondestroy() {
-    callEffects(false);
+    callEffects();
+    reset();
   }
 
   function save() {
-    originalParentCallback({ type, props, state, children, element, lastVDOM, effects });
+    /** @type {ComponentEnvironment} */
+    let env = { type, props, vars, childs, node, lastVDOM, effects };
+    originalParentCallback(env);
+  }
+
+  function reset() {
+    originalParentCallback();
   }
 
   function update() {
-    superfine.patch(lastVDOM, work(), element);
+    superfine.patch(lastVDOM, work(), node);
   }
 
-  function callEffects(call) {
+  function callEffects() {
     for (let key in effects) {
-      let { f, unique, last, cb } = effects[key];
+      /** @type {Effect} */
+      let value = effects[key];
+      let { f, unique, last, cb } = value;
       let serialized = (Array.isArray(unique) ? unique : [unique]).join();
-      if (unique === undefined || last !== serialized) {
+
+      if (unique === undefined || last !== serialized || !isActive) {
         cb && cb();
-        if (call) {
-          effects[key].cb = f(element);
+
+        if (isActive) {
+          effects[key].cb = f(node);
           effects[key].last = serialized;
         }
       }
@@ -116,5 +221,7 @@ let h = (type, props, ...rest) => {
 };
 
 let render = (app, el) => superfine.patch(null, app, el);
+let useState = val => actualUseState(val);
+let useEffect = (f, unique) => actualUseEffect(f, unique);
 
 export { h, render, useState, useEffect };
