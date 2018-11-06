@@ -1,8 +1,6 @@
-test
-lerna-debug.log 
-build
-externs
-user
-.cache
-src
+assets
 example
+src
+test
+.gitignore
+.cache

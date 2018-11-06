@@ -1,7 +1,3 @@
-node_modules
 dist
-lerna-debug.log
-build
-externs
-user
 .cache
+node_modules
