@@ -1,12 +1,26 @@
 // @jsx h
 import { h, render, useState, useEffect } from "../";
+import styled, { inject } from "./styled-wigly";
+
+let Wowza = styled.div`
+  background: grey;
+`;
+
+let Deep = () => {
+  useEffect(() => {
+    console.log("Deep mounted");
+    return () => console.log("Deep destroyed");
+  }, 0);
+
+  return <div>lifecycle test</div>;
+};
 
 let Test = ({ other }) => {
   let [msg, setMsg] = useState("wow!");
 
   useEffect(() => {
-    console.log("mounted");
-    return () => console.log("destroyed");
+    console.log("Test mounted");
+    return () => console.log("Test destroyed");
   }, 0);
 
   return (
@@ -14,15 +28,16 @@ let Test = ({ other }) => {
       <h2>Child {other}</h2>
       <div>{msg || "____"}</div>
       <input oninput={event => setMsg(event.target.value)} />
+      <Deep />
     </div>
   );
 };
 
-let Scene = () => {
+let Scene = ({ displayLast }) => {
   return (
     <div>
       <Test key={0} other={"1"} />
-      <Test key={1} other={"2"} />
+      {displayLast && <Test key={1} other={"2"} />}
     </div>
   );
 };
@@ -38,12 +53,16 @@ let App = () => {
 
   return (
     <div>
+      <Wowza>Wowza</Wowza>
       <h2>Parent</h2>
       <div>{msg || "____"}</div>
       <input oninput={oninput} />
-      <div>{count % 2 === 0 && <Scene />}</div>
+      <div>
+        <Scene displayLast={count % 3 !== 0} />
+      </div>
     </div>
   );
 };
 
 render(<App />, document.body);
+inject();

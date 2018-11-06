@@ -1,65 +1,4 @@
 /**
- * @record
- */
-function ComponentEnvironment() {}
-/** @type {?} */
-ComponentEnvironment.prototype.type;
-/** @type {?} */
-ComponentEnvironment.prototype.props;
-/** @type {?} */
-ComponentEnvironment.prototype.vars;
-/** @type {?} */
-ComponentEnvironment.prototype.childs;
-/** @type {?} */
-ComponentEnvironment.prototype.node;
-/** @type {?} */
-ComponentEnvironment.prototype.lastVDOM;
-/** @type {?} */
-ComponentEnvironment.prototype.effects;
-/** @type {?} */
-ComponentEnvironment.prototype.isActive;
-
-/**
- * @record
- */
-function SuperFineArgs() {}
-/** @export @type {?} */
-SuperFineArgs.prototype.props;
-
-/**
- * @record
- */
-function InternalLifecycle() {}
-/** @export @type {?} */
-InternalLifecycle.prototype.oncreate;
-/** @export @type {?} */
-InternalLifecycle.prototype.onupdate;
-/** @export @type {?} */
-InternalLifecycle.prototype.onremove;
-/** @export @type {?} */
-InternalLifecycle.prototype.ondestroy;
-
-/**
- * @record
- */
-function VDOM() {}
-/** @export @type {InternalLifecycle} */
-VDOM.prototype.props;
-
-/**
- * @record
- */
-function Effect() {}
-/** @type {?} */
-Effect.prototype.f;
-/** @type {?} */
-Effect.prototype.unique;
-/** @type {?} */
-Effect.prototype.last;
-/** @type {?} */
-Effect.prototype.cb;
-
-/**
  * @const
  */
 let NOOP = () => {};
@@ -80,6 +19,9 @@ let wigly = {
     if (typeof type !== "function") {
       return superfine.h(type, props, ...rest);
     }
+
+    /** @type {ComponentProps} */
+    props = props || {};
 
     let originalGetSeedState = getSeedState;
     let originalParentCallback = parentCallback;
@@ -112,7 +54,7 @@ let wigly = {
     let internalUseEffect = (f, unique) => {
       let key = effectCount++;
       /** @type {Effect} */
-      let effect = { ...effects[key], f, unique };
+      let effect = { ...(effects[key] || {}), f, unique };
       effects[key] = effect;
     };
 
@@ -120,35 +62,38 @@ let wigly = {
       for (let index in childs) {
         /** @type {ComponentEnvironment} */
         let child = childs[index];
-        let key = (child.props || {}).key;
-        if (child.type === find && key === (props || {}).key) {
+        let key = child.props.key;
+        if (child.type === find && key === props.key) {
           return { ...child, isActive };
         }
       }
     };
 
-    // TODO: it's bogus.
-    let internalParentCallback = data => {
-      if (!data) {
-        childs = [];
-        return;
+    let internalParentCallback = (data, toRemove) => {
+      if (toRemove) {
+        childs = childs.filter(child => !(child.type === data.type && child.props.key === data.props.key));
+      } else {
+        let exists = childs.reduce(
+          (total, curr) => (curr.type === data.type && curr.props.key === data.props.key ? true : total),
+          false
+        );
+        if (exists) {
+          childs = childs.map(child => (child.type === data.type && child.props.key === data.props.key ? data : child));
+        } else {
+          childs.push(data);
+        }
       }
-      childs.push(data);
+      save();
     };
 
-    return work();
-
-    function work() {
+    let work = () => {
       actualUseState = internalUseState;
       actualUseEffect = internalUseEffect;
       getSeedState = internalGetSeedState;
       parentCallback = internalParentCallback;
 
-      /** @type {SuperFineArgs} */
-      let args = { props };
-
       /** @type {VDOM} */
-      let res = type(args);
+      let res = type({ ...props, ["children"]: [].concat.apply([], rest) }); // todo
 
       stateCount = 0;
       effectCount = 0;
@@ -161,46 +106,42 @@ let wigly = {
       let vdom = { ...res, props: { ...res.props, oncreate, onupdate, onremove, ondestroy } };
 
       return (lastVDOM = vdom);
-    }
+    };
 
-    function oncreate(el) {
+    let oncreate = el => {
       node = el;
       save();
       callEffects();
-    }
+    };
 
-    function onupdate() {
+    let onupdate = () => {
       callEffects();
-    }
+    };
 
-    function onremove(_, remove) {
+    let onremove = (_, remove) => {
       isActive = false;
-      callEffects();
       update();
       remove();
-      reset();
-    }
+    };
 
-    function ondestroy() {
-      callEffects();
-      reset();
-    }
+    let ondestroy = () => {
+      originalParentCallback(env(), true); // reset
+    };
 
-    function save() {
+    let save = () => {
+      originalParentCallback(env());
+    };
+
+    let env = () => {
       /** @type {ComponentEnvironment} */
-      let env = { type, props, vars, childs, node, lastVDOM, effects };
-      originalParentCallback(env);
-    }
+      return { type, props, vars, childs, node, lastVDOM, effects };
+    };
 
-    function reset() {
-      originalParentCallback();
-    }
-
-    function update() {
+    let update = () => {
       superfine.patch(lastVDOM, work(), node);
-    }
+    };
 
-    function callEffects() {
+    let callEffects = () => {
       for (let key in effects) {
         /** @type {Effect} */
         let value = effects[key];
@@ -216,7 +157,9 @@ let wigly = {
           }
         }
       }
-    }
+    };
+
+    return work();
   },
 
   /**

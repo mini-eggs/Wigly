@@ -4,20 +4,19 @@
   "main": "dist/wigly.es5.js",
   "scripts": {
     "example": "parcel example/index.html",
-    "build": "npm run build:clean && npm run build:gcc:es5 && npm run build:gcc:es6 && npm run build:prepend:es5 && npm run build:prepend:es6 && npm run build:gzip",
+    "build": "npm run build:clean && npm run build:gcc:es5 && npm run build:gcc:es6 && npm run build:gzip",
     "build:clean": "rm -rf dist",
-    "build:gcc:es5": "java -jar ./node_modules/google-closure-compiler/compiler.jar --module_resolution WEBPACK --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT5 --externs externs/superfine.js --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es5.js 'src/**.js'",
-    "build:gcc:es6": "java -jar ./node_modules/google-closure-compiler/compiler.jar --module_resolution WEBPACK --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --externs externs/superfine.js --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es6.js 'src/**.js'",
-    "build:prepend:es5": "awk '{print $0}' node_modules/superfine/dist/superfine.js dist/wigly.es5.js > dist/wigly.es5.js.tmp && mv dist/wigly.es5.js.tmp dist/wigly.es5.js",
-    "build:prepend:es6": "awk '{print $0}' node_modules/superfine/dist/superfine.js dist/wigly.es6.js > dist/wigly.es6.js.tmp && mv dist/wigly.es6.js.tmp dist/wigly.es6.js",
+    "build:gcc:es5": "java -jar ./node_modules/google-closure-compiler/compiler.jar --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT5 --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es5.js 'src/**.js'",
+    "build:gcc:es6": "java -jar ./node_modules/google-closure-compiler/compiler.jar --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es6.js 'src/**.js'",
     "build:gzip": "gzip dist/* -k -f",
+    "test": "ava",
     "size": "wc -c dist/*"
   },
   "devDependencies": {
+    "ava": "^0.25.0",
+    "browser-env": "^3.2.5",
     "google-closure-compiler": "^20181008.0.0",
-    "parcel-bundler": "^1.10.3"
-  },
-  "dependencies": {
-    "superfine": "^6.0.1"
+    "parcel-bundler": "^1.10.3",
+    "string-css": "0.0.2"
   }
 }
