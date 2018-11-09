@@ -4,6 +4,10 @@
 
 A React inspired, component-based UI library for the web. Built with Superfine. Built to be lean.
 
+## Live example
+
+[https://codepen.io/minieggs40/project/editor/AEyxBx](https://codepen.io/minieggs40/project/editor/AEyxBx)
+
 ## 'Hello, World!' example
 
 ```javascript
