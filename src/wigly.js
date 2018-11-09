@@ -15,9 +15,9 @@ let wigly = {
   /**
    * @export
    */
-  h: (type, props, ...rest) => {
+  h: (type, props, ...children) => {
     if (typeof type !== "function") {
-      return superfine.h(type, props, ...rest);
+      return superfine.h(type, props, ...children);
     }
 
     /** @type {ComponentProps} */
@@ -31,7 +31,7 @@ let wigly = {
 
     /** @type {ComponentEnvironment} */
     let seed = originalGetSeedState(type, props) || {};
-    let { isActive = true, vars = {}, effects = [], childs = [], node, lastVDOM } = seed;
+    let { isActive = false, vars = {}, effects = [], childs = [], node, lastVDOM } = seed;
 
     let internalUseState = init => {
       let key = stateCount++;
@@ -83,6 +83,7 @@ let wigly = {
           childs.push(data);
         }
       }
+
       save();
     };
 
@@ -93,7 +94,7 @@ let wigly = {
       parentCallback = internalParentCallback;
 
       /** @type {VDOM} */
-      let res = type({ ...props, ["children"]: [].concat.apply([], rest) }); // todo
+      let res = type({ ...props, children });
 
       stateCount = 0;
       effectCount = 0;
@@ -103,29 +104,35 @@ let wigly = {
       parentCallback = originalParentCallback;
 
       /** @type {VDOM} */
-      let vdom = { ...res, props: { ...res.props, oncreate, onupdate, onremove, ondestroy } };
-
-      return (lastVDOM = vdom);
+      return { ...res, props: { ...res.props, oncreate, onupdate, onremove, ondestroy } };
     };
 
     let oncreate = el => {
       node = el;
+      isActive = true;
       save();
       callEffects();
     };
 
-    let onupdate = () => {
-      callEffects();
+    let onupdate = el => {
+      node = el;
+      isActive = true;
+      save();
+      requestAnimationFrame(callEffects);
     };
 
-    let onremove = (_, remove) => {
+    let onremove = (el, remove) => {
+      node = el;
       isActive = false;
+      save();
       update();
       remove();
     };
 
-    let ondestroy = () => {
-      originalParentCallback(env(), true); // reset
+    let ondestroy = el => {
+      node = el;
+      isActive = false;
+      originalParentCallback(env(), true); // remove records from parent
     };
 
     let save = () => {
@@ -138,7 +145,9 @@ let wigly = {
     };
 
     let update = () => {
-      superfine.patch(lastVDOM, work(), node);
+      if (!isActive) return;
+      let container = lastVDOM.element ? lastVDOM.element.parentElement : node.parentElement;
+      lastVDOM = superfine.patch(lastVDOM, work(), container);
     };
 
     let callEffects = () => {
@@ -159,7 +168,10 @@ let wigly = {
       }
     };
 
-    return work();
+    /** @type {VDOM} */
+    let results = (lastVDOM = work());
+    return results.element
+
   },
 
   /**

@@ -38,6 +38,8 @@ InternalLifecycle.prototype.ondestroy;
 function VDOM() {}
 /** @export @type {InternalLifecycle} */
 VDOM.prototype.props;
+/** @export @type {*} */
+VDOM.prototype.element;
 
 /**
  * @record

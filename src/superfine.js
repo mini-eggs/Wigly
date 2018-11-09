@@ -111,8 +111,8 @@ let createElement = function(node, lifecycle, isSvg) {
     node.type === TEXT_NODE
       ? document.createTextNode(node.name)
       : (isSvg = isSvg || node.name === "svg")
-        ? document.createElementNS(SVG_NS, node.name)
-        : document.createElement(node.name);
+      ? document.createElementNS(SVG_NS, node.name)
+      : document.createElement(node.name);
 
   let props = node.props;
   if (props.oncreate) {
