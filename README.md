@@ -1,6 +1,8 @@
+[![gzip size](http://img.badgesize.io/https://unpkg.com/wigly/dist/wigly.es6.js.gz)](https://unpkg.com/wigly/dist/wigly.es6.js.gz)
+
 # Wigly
 
-A React inspired functional UI library for the web. Built with Superfine.
+A React inspired, component-based UI library for the web. Built with Superfine. Built to be lean.
 
 ## 'Hello, World!' example
 
