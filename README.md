@@ -43,7 +43,7 @@ render(<Counter />, document.body);
 ```javascript
 import { h, render, useState, useEffect } from "wigly";
 
-function Counter(props) {
+function App(props) {
   var [username, set] = useState();
 
   // Optional second parameter, will only call first parameter when userId value changes.
@@ -65,5 +65,5 @@ function Counter(props) {
   );
 }
 
-render(<Counter userId={123} />, document.body);
+render(<App userId={123} />, document.body);
 ```

@@ -1,5 +1,5 @@
 // @jsx h
-import { h, render, useState, useEffect } from "../";
+import { h, render, useState, useEffect } from "../src/wigly";
 import styled, { inject } from "./styled-wigly";
 
 let Wowza = styled.div`

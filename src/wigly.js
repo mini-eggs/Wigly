@@ -103,36 +103,49 @@ let wigly = {
       getSeedState = originalGetSeedState;
       parentCallback = originalParentCallback;
 
+      let lc = ["oncreate", "onupdate", "onremove", "ondestroy"].reduce(
+        (fns, key) => ({
+          ...fns,
+          [key]: (...args) => {
+            res.props.oncreate && res.props[key](...args);
+            lifecycles[key](...args);
+          }
+        }),
+        {}
+      );
+
       /** @type {VDOM} */
-      return { ...res, props: { ...res.props, oncreate, onupdate, onremove, ondestroy } };
+      return { ...res, props: { ...res.props, ...lc } };
     };
 
-    let oncreate = el => {
-      node = el;
-      isActive = true;
-      save();
-      callEffects();
-    };
+    let lifecycles = {
+      oncreate: el => {
+        node = el;
+        isActive = true;
+        save();
+        callEffects();
+      },
 
-    let onupdate = el => {
-      node = el;
-      isActive = true;
-      save();
-      requestAnimationFrame(callEffects);
-    };
+      onupdate: el => {
+        node = el;
+        isActive = true;
+        save();
+        nexttick(callEffects);
+      },
 
-    let onremove = (el, remove) => {
-      node = el;
-      isActive = false;
-      save();
-      update();
-      remove();
-    };
+      onremove: (el, remove) => {
+        node = el;
+        isActive = false;
+        save();
+        update();
+        remove();
+      },
 
-    let ondestroy = el => {
-      node = el;
-      isActive = false;
-      originalParentCallback(env(), true); // remove records from parent
+      ondestroy: el => {
+        node = el;
+        isActive = false;
+        originalParentCallback(env(), true); // remove records from parent
+      }
     };
 
     let save = () => {
@@ -168,10 +181,7 @@ let wigly = {
       }
     };
 
-    /** @type {VDOM} */
-    let results = (lastVDOM = work());
-    return results.element
-
+    return (lastVDOM = work());
   },
 
   /**
