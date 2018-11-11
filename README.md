@@ -2,7 +2,7 @@
 
 # Wigly
 
-A React inspired, component-based UI library for the web. Built with Superfine. Built to be lean.
+A React inspired, component-based UI library for the web. Built with [Superfine](https://github.com/jorgebucaran/superfine/). Built to be lean.
 
 ## Live example
 
