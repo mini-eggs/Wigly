@@ -1,41 +1,68 @@
 // @jsx wigly.h
 import wigly, { useState, useEffect } from "../";
+import navaid from "navaid";
 import "babel-polyfill";
 
-function App(props) {
-  var [username, setUsername] = useState();
-  var [error, setError] = useState();
+let def = () => <div />;
 
-  useEffect(
-    async function() {
-      try {
-        var request = await fetch(`/get/user/${props.userId}`);
-        var result = await request.json();
-        setUsername(result.username);
-      } catch (e) {
-        setError(e.toString());
-      }
-    },
-    [props.userId]
+function Home() {
+  return <div>home</div>;
+}
+
+function Blog() {
+  return <div>blog</div>;
+}
+
+function useRouter(router, routes) {
+  let [[comp, params], set] = useState([def, {}]);
+
+  useEffect(() => {
+    for (let route of routes) {
+      router.on(route.href, params => {
+        set([route.component, params]);
+      });
+    }
+  }, 0);
+
+  useEffect(router.listen, 0);
+
+  return [comp, params];
+}
+
+function Nav() {
+  return (
+    <nav>
+      <a href="/">home</a>
+      <a href="/blog">blog</a>
+    </nav>
   );
+}
+
+let AsyncNav = () => Promise.resolve({ default: Nav });
+
+let AsyncHome = () =>
+  new Promise(resolve => {
+    setTimeout(resolve, 250, { default: Home });
+  });
+
+let AsyncBlog = () =>
+  new Promise(resolve => {
+    setTimeout(resolve, 250, { default: Blog });
+  });
+
+function App(props) {
+  var [Comp, props] = useRouter(new navaid("/"), [
+    { href: "/", component: AsyncHome },
+    { href: "/err", component: AsyncHome },
+    { href: "/blog", component: AsyncBlog }
+  ]);
 
   return (
     <div>
-      {(() => {
-        switch (true) {
-          case !!error: {
-            return error;
-          }
-          case !!username: {
-            return <h1>Username: {username}</h1>;
-          }
-          default: {
-            return "loading...";
-          }
-        }
-      })()}
+      <AsyncNav />
+      <Comp {...props} />
     </div>
   );
 }
 
-wigly.render(<App userId={123} />, document.body);
+wigly.render(<App />, document.body);

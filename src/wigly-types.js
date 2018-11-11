@@ -18,6 +18,8 @@ ComponentEnvironment.prototype.lastVDOM;
 ComponentEnvironment.prototype.effects;
 /** @type {?} */
 ComponentEnvironment.prototype.isActive;
+/** @type {?} */
+ComponentEnvironment.prototype.f;
 
 /**
  * @record
@@ -60,3 +62,10 @@ Effect.prototype.cb;
 function ComponentProps() {}
 /** @export @type {?} */
 ComponentProps.prototype.key;
+
+/**
+ * @record
+ */
+function SubPromise() {}
+/** @export @type {?} */
+ComponentProps.prototype.then;

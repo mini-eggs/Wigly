@@ -79,3 +79,21 @@ test("Immediate components are removed properly.", t => {
   setter(false);
   t.deepEqual(element.textContent, "");
 });
+
+test("Basic lazy components work as expected.", async t => {
+  let LazyChild = () => Promise.resolve({ default: () => <div>here we go</div> });
+
+  let App = () => {
+    return (
+      <div>
+        <LazyChild />
+      </div>
+    );
+  };
+
+  var { element } = render(<App />, document.body);
+  t.deepEqual(element.textContent, "");
+
+  await new Promise(r => setTimeout(r, 0));
+  t.deepEqual(element.textContent, "here we go");
+});

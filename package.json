@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "main": "dist/wigly.es5.js",
   "scripts": {
     "example": "parcel example/index.html",
@@ -21,6 +21,7 @@
     "dom-tags": "^1.0.0",
     "google-closure-compiler": "^20181008.0.0",
     "jest": "^23.6.0",
+    "navaid": "^1.0.0",
     "parcel-bundler": "^1.10.3",
     "string-css": "0.0.2"
   },

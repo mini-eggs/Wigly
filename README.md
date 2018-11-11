@@ -2,7 +2,7 @@
 
 # Wigly
 
-A React inspired, component-based UI library for the web. Built with Superfine. Built to be lean.
+A React inspired, component-based UI library for the web. Built with [Superfine](https://github.com/jorgebucaran/superfine/). Built to be lean.
 
 ## Live example
 
@@ -26,7 +26,8 @@ wigly.render(<App greeting="Hello" />, document.body);
 import wigly, { useState } from "wigly";
 
 function Counter() {
-  var [count, set] = wigly.useState(0);
+  var [count, set] = useState(0);
+
   return (
     <div>
       <h1>Count: {count}</h1>
@@ -68,6 +69,24 @@ function App(props) {
 wigly.render(<App userId={123} />, document.body);
 ```
 
+## Advanced, lazy/async components
+
+```javascript
+import wigly from "wigly";
+
+// A function that returns a promise that will resolve to a
+// component can be used as a valid wigly component.
+let LazyChild = () => import("./components/child");
+
+let App = () => (
+  <div>
+    <LazyChild />
+  </div>
+);
+
+wigly.render(<App />, document.body);
+```
+
 ## Advanced, creating a 'styled-components' package
 
 ```javascript
@@ -81,7 +100,10 @@ let styled = tags.reduce(
     [key]: style => props => {
       let [classes] = useState(stringcss.css(style));
       useEffect(stringcss.inject, 0);
-      return wigly.h(key, { ...props, class: props.class ? `${classes} ${props.class}` : classes });
+      return wigly.h(key, {
+        ...props,
+        class: props.class ? `${classes} ${props.class}` : classes
+      });
     }
   }),
   {}

@@ -7,6 +7,7 @@ let actualUseState = NOOP;
 let actualUseEffect = NOOP;
 let getSeedState = NOOP;
 let parentCallback = NOOP;
+let rerenderParent = NOOP; // async components rerender parent to keep vdom consistent
 
 /**
  * @export
@@ -25,13 +26,14 @@ let wigly = {
 
     let originalGetSeedState = getSeedState;
     let originalParentCallback = parentCallback;
+    let originalRerenderParent = rerenderParent;
 
     let stateCount = 0;
     let effectCount = 0;
 
     /** @type {ComponentEnvironment} */
     let seed = originalGetSeedState(type, props) || {};
-    let { isActive = false, vars = {}, effects = [], childs = [], node, lastVDOM } = seed;
+    let { isActive = false, vars = {}, effects = [], childs = [], node, lastVDOM, f = type } = seed;
 
     let internalUseState = init => {
       let key = stateCount++;
@@ -92,9 +94,28 @@ let wigly = {
       actualUseEffect = internalUseEffect;
       getSeedState = internalGetSeedState;
       parentCallback = internalParentCallback;
+      rerenderParent = update;
 
       /** @type {VDOM} */
-      let res = type({ ...props, children });
+      let res = f({ ...props, children });
+
+      if (res instanceof Promise) {
+        /** @type {SubPromise} */
+        let promise = res;
+
+        /** @type {InternalLifecycle} */
+        let asyncLifecycle = {
+          oncreate: () => {
+            promise.then(file => {
+              f = file.default;
+              save();
+              originalRerenderParent();
+            });
+          }
+        };
+
+        res = superfine.h("template", asyncLifecycle);
+      }
 
       stateCount = 0;
       effectCount = 0;
@@ -102,6 +123,7 @@ let wigly = {
       actualUseEffect = NOOP;
       getSeedState = originalGetSeedState;
       parentCallback = originalParentCallback;
+      rerenderParent = originalRerenderParent;
 
       let lc = ["oncreate", "onupdate", "onremove", "ondestroy"].reduce(
         (fns, key) => ({
@@ -159,7 +181,7 @@ let wigly = {
 
     let env = () => {
       /** @type {ComponentEnvironment} */
-      return { type, props, vars, childs, node, lastVDOM, effects };
+      return { type, props, vars, childs, node, lastVDOM, effects, f };
     };
 
     let update = () => {
