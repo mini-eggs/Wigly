@@ -11,22 +11,22 @@ A React inspired, component-based UI library for the web. Built with Superfine. 
 ## 'Hello, World!' example
 
 ```javascript
-import { h, render } from "wigly";
+import wigly from "wigly";
 
 function App(props) {
   return <div>{props.greeting}, World!</div>;
 }
 
-render(<App greeting="Hello" />, document.body);
+wigly.render(<App greeting="Hello" />, document.body);
 ```
 
 ## Stateful counter example
 
 ```javascript
-import { h, render, useState } from "wigly";
+import wigly, { useState } from "wigly";
 
 function Counter() {
-  var [count, set] = useState(0);
+  var [count, set] = wigly.useState(0);
   return (
     <div>
       <h1>Count: {count}</h1>
@@ -35,13 +35,13 @@ function Counter() {
   );
 }
 
-render(<Counter />, document.body);
+wigly.render(<Counter />, document.body);
 ```
 
 ## Using AJAX calls
 
 ```javascript
-import { h, render, useState, useEffect } from "wigly";
+import wigly, { useState, useEffect } from "wigly";
 
 function App(props) {
   var [username, set] = useState();
@@ -65,5 +65,34 @@ function App(props) {
   );
 }
 
-render(<App userId={123} />, document.body);
+wigly.render(<App userId={123} />, document.body);
+```
+
+## Advanced, creating a 'styled-components' package
+
+```javascript
+import wigly, { useState, useEffect } from "wigly";
+import tags from "dom-tags";
+import stringcss from "string-css";
+
+let styled = tags.reduce(
+  (fns, key) => ({
+    ...fns,
+    [key]: style => props => {
+      let [classes] = useState(stringcss.css(style));
+      useEffect(stringcss.inject, 0);
+      return wigly.h(key, { ...props, class: props.class ? `${classes} ${props.class}` : classes });
+    }
+  }),
+  {}
+);
+
+let Title = styled.h1`
+  color: #121212;
+  font-family: nyt-cheltenham, georgia, "times new roman", times, serif;
+  font-weight: 700;
+  font-style: italic;
+`;
+
+wigly.render(<Title>Your Styled Component Here</Title>, document.body);
 ```

@@ -16,6 +16,7 @@
     "@babel/core": "^7.1.5",
     "@babel/plugin-transform-react-jsx": "^7.0.0",
     "ava": "^1.0.0-rc.1",
+    "babel-polyfill": "^6.26.0",
     "browser-env": "^3.2.5",
     "dom-tags": "^1.0.0",
     "google-closure-compiler": "^20181008.0.0",
