@@ -106,9 +106,18 @@ let wigly = {
       let lc = ["oncreate", "onupdate", "onremove", "ondestroy"].reduce(
         (fns, key) => ({
           ...fns,
-          [key]: (...args) => {
-            res.props.oncreate && res.props[key](...args);
-            lifecycles[key](...args);
+          [key]: (el, maybeRemove) => {
+            let remover = typeof maybeRemove === "function" ? maybeRemove : NOOP;
+            node = el;
+
+            if (res.props[key]) {
+              res.props[key](el);
+              lifecycles[key](el);
+              remover();
+            } else {
+              lifecycles[key](el);
+              remover();
+            }
           }
         }),
         {}
@@ -118,31 +127,27 @@ let wigly = {
       return { ...res, props: { ...res.props, ...lc } };
     };
 
+    /** @type {InternalLifecycle} */
     let lifecycles = {
-      oncreate: el => {
-        node = el;
+      oncreate: () => {
         isActive = true;
         save();
         callEffects();
       },
 
-      onupdate: el => {
-        node = el;
+      onupdate: () => {
         isActive = true;
         save();
         nexttick(callEffects);
       },
 
-      onremove: (el, remove) => {
-        node = el;
+      onremove: () => {
         isActive = false;
         save();
         update();
-        remove();
       },
 
-      ondestroy: el => {
-        node = el;
+      ondestroy: () => {
         isActive = false;
         originalParentCallback(env(), true); // remove records from parent
       }
