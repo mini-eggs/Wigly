@@ -80,6 +80,45 @@ test("Immediate components are removed properly.", t => {
   t.deepEqual(element.textContent, "");
 });
 
+test("parent merges vdom", t => {
+  let childF;
+  let parentF;
+
+  let Child = () => {
+    let [list, set] = useState([]);
+
+    childF = set;
+
+    return (
+      <div>
+        {list.map(item => (
+          <i>{item}</i>
+        ))}
+      </div>
+    );
+  };
+
+  let Parent = () => {
+    let [_, set] = useState(0);
+    parentF = set;
+
+    return (
+      <div>
+        <Child />
+      </div>
+    );
+  };
+
+  var { element } = render(<Parent />, document.body);
+  t.deepEqual(element.textContent, "");
+
+  childF(["hi"]);
+  t.deepEqual(element.textContent, "hi");
+
+  parentF(1);
+  t.deepEqual(element.textContent, "hi");
+});
+
 test("Basic lazy components work as expected.", async t => {
   let LazyChild = () => Promise.resolve({ default: () => <div>here we go</div> });
 
