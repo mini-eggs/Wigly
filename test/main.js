@@ -121,7 +121,11 @@ test("parent merges vdom", async t => {
     );
   };
 
-  let element = await render(<Parent />, document.body);
+  function App() {
+    return <Parent />;
+  }
+
+  let element = await render(<App />, document.body);
   t.deepEqual(element.textContent, "");
 
   childF(["hi"]);

@@ -17,15 +17,12 @@ export let render = (f, el) => {
 export let h = (f, props, ...children) => {
   let orig = f;
   props = props || {};
-
-  if (typeof f === "function") {
-    f = COMPONENT_WRAPPER;
-  }
-
+  props.key = props.key || 0;
+  if (typeof f === "function") f = COMPONENT_WRAPPER;
   return {
     ...createElement(f, props, ...children),
     args: { f: orig, props, children },
-    internal: { effects: [], effectCount: 0, state: [], stateCount: 0, node: null, active: false }
+    internal: { effects: [], effectCount: 0, state: [], stateCount: 0, node: null, active: false, children: {} }
   };
 };
 
@@ -33,11 +30,7 @@ export let state = init => {
   let component = current;
   let key = component.internal.stateCount++;
   let val = component.internal.state[key];
-
-  if (typeof val === "undefined") {
-    val = init;
-  }
-
+  if (typeof val === "undefined") val = init;
   return [
     val,
     next => {
@@ -53,10 +46,8 @@ export let effect = (f, ...args) => {
   current.internal.effects[key] = { ...last, f, args };
 };
 
-let transform = async (spec, cb) => {
-  if (!spec.args) {
-    return cb(spec); // this is a text node
-  }
+let transform = async (spec, cb, saveState) => {
+  if (!spec.args) return cb(spec, {}); // this is a text/leaf node
 
   let vdom;
 
@@ -66,11 +57,16 @@ let transform = async (spec, cb) => {
       internal: {
         ...spec.internal,
         update: () => {
-          transform(spec, next => {
-            if (spec.internal.node.parentElement) {
-              vdom = patch(vdom, next, spec.internal.node.parentElement);
-            }
-          });
+          saveState && saveState(spec.internal.state);
+          transform(
+            spec,
+            next => {
+              if (spec.internal.node && spec.internal.node.parentElement) {
+                vdom = patch(vdom, next, spec.internal.node.parentElement);
+              }
+            },
+            saveState
+          );
         }
       }
     };
@@ -102,12 +98,33 @@ let transform = async (spec, cb) => {
   let promises = [];
   for (let key in vdom.children) {
     let child = vdom.children[key];
+
+    /**
+     * Persist child state.
+     * Yes, this is ugly.
+     */
+    if (child.args) {
+      let states;
+      if (!(states = spec.internal.children[child.args.f])) {
+        states = spec.internal.children[child.args.f] = {};
+      }
+      if (states[child.args.props.key]) {
+        child.internal.state = states[child.args.props.key];
+      }
+    }
+
     promises.push(
       new Promise(resolve => {
-        transform(child, childVDOM => {
-          vdom.children[key] = childVDOM;
-          resolve();
-        });
+        transform(
+          child,
+          childVDOM => {
+            vdom.children[key] = childVDOM;
+            resolve();
+          },
+          state => {
+            spec.internal.children[child.args.f][child.args.props.key] = state;
+          }
+        );
       })
     );
   }
@@ -116,8 +133,8 @@ let transform = async (spec, cb) => {
     vdom.props = {
       ...vdom.props,
       oncreate: el => {
-        spec.internal.active = true;
         spec.internal.node = el;
+        spec.internal.active = true;
         runEffects();
       },
       onupdate: el => {
@@ -126,22 +143,27 @@ let transform = async (spec, cb) => {
       },
       ondestroy: () => {
         spec.internal.active = false;
+        saveState();
         for (let key in spec.internal.effects) {
           let { cleanup } = spec.internal.effects[key];
           if (cleanup) cleanup();
         }
       }
     };
-    cb(vdom);
+    cb(Object.assign(vdom, { args: spec.args, internal: spec.internal }));
   };
 
   await Promise.all(promises);
 
   if (vdom.name === COMPONENT_WRAPPER) {
-    return transform(vdom, next => {
-      vdom = next;
-      callback();
-    });
+    return transform(
+      vdom,
+      next => {
+        vdom = next;
+        callback();
+      },
+      saveState
+    );
   }
 
   callback();
