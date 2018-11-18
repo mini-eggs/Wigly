@@ -23,10 +23,10 @@ wigly.render(<App greeting="Hello" />, document.body);
 ## Stateful counter example
 
 ```javascript
-import wigly, { useState } from "wigly";
+import wigly, { state } from "wigly";
 
 function Counter() {
-  var [count, set] = useState(0);
+  var [count, set] = state(0);
 
   return (
     <div>
@@ -42,15 +42,15 @@ wigly.render(<Counter />, document.body);
 ## Using AJAX calls
 
 ```javascript
-import wigly, { useState, useEffect } from "wigly";
+import wigly, { state, effect } from "wigly";
 
 function App(props) {
-  var [username, set] = useState();
+  var [username, set] = state();
 
   // Optional second parameter, will only call first parameter when userId value changes.
   // If no second paramter is given the first parameter will be called after every render.
   // Operates the exact same as React's useEffect.
-  useEffect(
+  effect(
     async function() {
       var request = await fetch(`/get/user/${props.userId}`);
       var result = await request.json();
@@ -90,7 +90,7 @@ wigly.render(<App />, document.body);
 ## Advanced, creating a 'styled-components' package
 
 ```javascript
-import wigly, { useState, useEffect } from "wigly";
+import wigly, { state, effect } from "wigly";
 import tags from "dom-tags";
 import stringcss from "string-css";
 
@@ -98,8 +98,8 @@ let styled = tags.reduce(
   (fns, key) => ({
     ...fns,
     [key]: style => props => {
-      let [classes] = useState(stringcss.css(style));
-      useEffect(stringcss.inject, 0);
+      let [classes] = state(stringcss.css(style));
+      effect(stringcss.inject, 0);
       return wigly.h(key, {
         ...props,
         class: props.class ? `${classes} ${props.class}` : classes

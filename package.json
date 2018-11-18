@@ -1,29 +1,24 @@
 {
   "name": "wigly",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "main": "dist/wigly.es5.js",
+  "module": "src/main.js",
   "scripts": {
-    "example": "parcel example/index.html",
-    "build": "npm run build:clean && npm run build:gcc:es5 && npm run build:gcc:es6 && npm run build:gzip",
-    "build:clean": "rm -rf dist",
-    "build:gcc:es5": "java -jar ./node_modules/google-closure-compiler/compiler.jar --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT5 --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es5.js 'src/**.js'",
-    "build:gcc:es6": "java -jar ./node_modules/google-closure-compiler/compiler.jar --assume_function_wrapper --isolation_mode IIFE --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --generate_exports --export_local_property_definitions --compilation_level ADVANCED --js_output_file=dist/wigly.es6.js 'src/**.js'",
-    "build:gzip": "gzip dist/* -k -f",
-    "test": "ava",
+    "build": "rm -rf dist && webpack --mode production && gzip -f -k dist/*",
+    "test": "ava -s",
     "size": "wc -c dist/*"
   },
+  "dependencies": {
+    "superfine": "^6.0.1"
+  },
   "devDependencies": {
-    "@babel/core": "^7.1.5",
-    "@babel/plugin-transform-react-jsx": "^7.0.0",
+    "@babel/plugin-transform-react-jsx": "^7.1.6",
+    "@babel/preset-env": "^7.1.6",
     "ava": "^1.0.0-rc.1",
-    "babel-polyfill": "^6.26.0",
+    "babel-loader": "^8.0.4",
     "browser-env": "^3.2.5",
-    "dom-tags": "^1.0.0",
-    "google-closure-compiler": "^20181008.0.0",
-    "jest": "^23.6.0",
-    "navaid": "^1.0.0",
-    "parcel-bundler": "^1.10.3",
-    "string-css": "0.0.2"
+    "webpack": "^4.25.1",
+    "webpack-cli": "^3.1.2"
   },
   "ava": {
     "babel": {

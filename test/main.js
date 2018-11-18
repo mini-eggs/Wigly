@@ -1,21 +1,23 @@
-import test from "ava";
-import { h, render, useState, useEffect } from "../";
-
 require("browser-env")();
 
-test("'Hello, World'", t => {
+let test = require("ava");
+let { h, render, state, effect } = require("../dist/wigly.es6");
+
+let sleep = (t = 1) => new Promise(r => setTimeout(r, t));
+
+test("'Hello, World'", async t => {
   let App = () => {
-    let [msg] = useState("Hello, World!");
+    let [msg] = state("Hello, World!");
     return <div>{msg}</div>;
   };
 
-  let { element } = render(<App />, document.body);
+  let element = await render(<App />, document.body);
   t.deepEqual(element.textContent, "Hello, World!");
 });
 
-test("Conditional components work as expected.", t => {
+test("Conditional components work as expected.", async t => {
   let App = () => {
-    let [active, set] = useState(true);
+    let [active, set] = state(true);
     return (
       <div>
         {active && <h1>hi</h1>}
@@ -24,39 +26,46 @@ test("Conditional components work as expected.", t => {
     );
   };
 
-  let { element } = render(<App />, document.body);
+  let element = await render(<App />, document.body);
   t.deepEqual(element.textContent, "hi");
 
   element.querySelector("button").click();
+  await sleep();
+
   t.deepEqual(element.textContent, "");
 });
 
-test("Immediate component children lifecycles.", t => {
+test("Immediate component children lifecycles.", async t => {
   let parentMounted = false;
   let childMounted = false;
 
   function Child() {
-    useEffect(() => {
+    effect(() => {
       childMounted = true;
-    }, 0);
+    });
 
     return <div>child</div>;
   }
 
   function Parent() {
-    useEffect(() => {
+    effect(() => {
       parentMounted = true;
-    }, 0);
+    });
 
-    return <Child />;
+    return (
+      <div>
+        <Child />
+      </div>
+    );
   }
 
-  render(<Parent />, document.body);
+  await render(<Parent />, document.body);
+
   t.deepEqual(parentMounted, true);
   t.deepEqual(childMounted, true);
 });
 
-test("Immediate components are removed properly.", t => {
+test("Immediate components are removed properly.", async t => {
   let setter;
 
   function ChildOne() {
@@ -68,24 +77,26 @@ test("Immediate components are removed properly.", t => {
   }
 
   function Parent() {
-    let [active, set] = useState(true);
+    let [active, set] = state(true);
     setter = set;
     return <div>{active && <ChildTwo />}</div>;
   }
 
-  var { element } = render(<Parent />, document.body);
+  let element = await render(<Parent />, document.body);
   t.deepEqual(element.textContent, "here we go");
 
   setter(false);
+  await sleep();
+
   t.deepEqual(element.textContent, "");
 });
 
-test("parent merges vdom", t => {
+test("parent merges vdom", async t => {
   let childF;
   let parentF;
 
   let Child = () => {
-    let [list, set] = useState([]);
+    let [list, set] = state([]);
 
     childF = set;
 
@@ -99,7 +110,7 @@ test("parent merges vdom", t => {
   };
 
   let Parent = () => {
-    let [_, set] = useState(0);
+    let [_, set] = state(0);
     parentF = set;
 
     return (
@@ -109,30 +120,22 @@ test("parent merges vdom", t => {
     );
   };
 
-  var { element } = render(<Parent />, document.body);
+  let element = await render(<Parent />, document.body);
   t.deepEqual(element.textContent, "");
 
   childF(["hi"]);
+  await sleep();
+
   t.deepEqual(element.textContent, "hi");
 
   parentF(1);
+  await sleep();
+
   t.deepEqual(element.textContent, "hi");
 });
 
 test("Basic lazy components work as expected.", async t => {
   let LazyChild = () => Promise.resolve({ default: () => <div>here we go</div> });
-
-  let App = () => {
-    return (
-      <div>
-        <LazyChild />
-      </div>
-    );
-  };
-
-  var { element } = render(<App />, document.body);
-  t.deepEqual(element.textContent, "");
-
-  await new Promise(r => setTimeout(r, 0));
+  let element = await render(<LazyChild />, document.body);
   t.deepEqual(element.textContent, "here we go");
 });
