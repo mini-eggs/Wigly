@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "main": "dist/wigly.es5.js",
   "module": "src/main.js",
   "scripts": {
@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@babel/plugin-transform-react-jsx": "^7.1.6",
+    "@babel/polyfill": "^7.0.0",
     "@babel/preset-env": "^7.1.6",
     "ava": "^1.0.0-rc.1",
     "babel-loader": "^8.0.4",

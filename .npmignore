@@ -1,6 +1,6 @@
 assets
 example
-src
 test
 .gitignore
 .cache
+.webpack.config.js

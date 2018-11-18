@@ -25,7 +25,7 @@ export let h = (f, props, ...children) => {
   return {
     ...createElement(f, props, ...children),
     args: { f: orig, props, children },
-    internal: { effects: [], effectCount: 0, state: [], stateCount: 0, node: null }
+    internal: { effects: [], effectCount: 0, state: [], stateCount: 0, node: null, active: false }
   };
 };
 
@@ -66,8 +66,6 @@ let transform = async (spec, cb) => {
       internal: {
         ...spec.internal,
         update: () => {
-          spec.internal.stateCount = 0;
-          spec.internal.effectCount = 0;
           transform(spec, next => {
             if (spec.internal.node.parentElement) {
               vdom = patch(vdom, next, spec.internal.node.parentElement);
@@ -81,6 +79,7 @@ let transform = async (spec, cb) => {
   register();
 
   let runEffects = async () => {
+    if (!spec.internal.active) return;
     for (let key in spec.internal.effects) {
       let { f, args, last, cleanup } = spec.internal.effects[key];
       if (typeof last === "undefined" || args.length === 0 || last.join() !== args.join()) {
@@ -103,7 +102,6 @@ let transform = async (spec, cb) => {
   let promises = [];
   for (let key in vdom.children) {
     let child = vdom.children[key];
-
     promises.push(
       new Promise(resolve => {
         transform(child, childVDOM => {
@@ -118,6 +116,7 @@ let transform = async (spec, cb) => {
     vdom.props = {
       ...vdom.props,
       oncreate: el => {
+        spec.internal.active = true;
         spec.internal.node = el;
         runEffects();
       },
@@ -126,6 +125,7 @@ let transform = async (spec, cb) => {
         runEffects();
       },
       ondestroy: () => {
+        spec.internal.active = false;
         for (let key in spec.internal.effects) {
           let { cleanup } = spec.internal.effects[key];
           if (cleanup) cleanup();

@@ -1,7 +1,8 @@
 require("browser-env")();
+require("@babel/polyfill");
 
 let test = require("ava");
-let { h, render, state, effect } = require("../dist/wigly.es6");
+let { h, render, state, effect } = require("../dist/wigly.es5");
 
 let sleep = (t = 1) => new Promise(r => setTimeout(r, t));
 
