@@ -1,16 +1,22 @@
 import { h as createElement, patch } from "superfine";
 
-let COMPONENT_WRAPPER = "λ";
+let COMPONENT_WRAPPER = "λ"; // Don't pass components directly to Superfine, it impact our ability to support async/lazy components.
 
-let current;
+let current; // Currentyl executing component for hooks.
 
 export let render = (f, el) => {
   return new Promise(resolve => {
     let last = null;
-    transform(f, vdom => {
-      last = patch(last, vdom, el);
-      resolve(last.element);
-    });
+    (function render() {
+      transform(
+        f,
+        vdom => {
+          last = patch(last, vdom, el);
+          resolve(last.element);
+        },
+        render
+      );
+    })();
   });
 };
 
@@ -46,8 +52,8 @@ export let effect = (f, ...args) => {
   current.internal.effects[key] = { ...last, f, args };
 };
 
-let transform = async (spec, cb, saveState) => {
-  if (!spec.args) return cb(spec, {}); // this is a text/leaf node
+let transform = async (spec, connected, update, reset) => {
+  if (!spec.args) return connected(spec, {}); // this is a text/leaf node
 
   let vdom;
 
@@ -57,16 +63,7 @@ let transform = async (spec, cb, saveState) => {
       internal: {
         ...spec.internal,
         update: () => {
-          saveState && saveState(spec.internal.state);
-          transform(
-            spec,
-            next => {
-              if (spec.internal.node && spec.internal.node.parentElement) {
-                vdom = patch(vdom, next, spec.internal.node.parentElement);
-              }
-            },
-            saveState
-          );
+          update(spec.internal.state);
         }
       }
     };
@@ -97,60 +94,93 @@ let transform = async (spec, cb, saveState) => {
 
   let promises = [];
   for (let key in vdom.children) {
-    let child = vdom.children[key];
+    let updating = false;
+    let updateQueue = [];
 
-    /**
-     * Persist child state.
-     * Yes, this is ugly.
-     */
-    if (child.args) {
-      let states;
-      if (!(states = spec.internal.children[child.args.f])) {
-        states = spec.internal.children[child.args.f] = {};
-      }
-      if (states[child.args.props.key]) {
-        child.internal.state = states[child.args.props.key];
+    async function runFirstUpdate() {
+      await updateQueue.shift()();
+      if (updateQueue.length > 0) {
+        await runFirstUpdate();
       }
     }
 
     promises.push(
-      new Promise(resolve => {
-        transform(
-          child,
-          childVDOM => {
-            vdom.children[key] = childVDOM;
-            resolve();
-          },
-          state => {
-            spec.internal.children[child.args.f][child.args.props.key] = state;
+      (function work(tree) {
+        if (tree.args) {
+          let states;
+          if (!(states = spec.internal.children[tree.args.f])) {
+            states = spec.internal.children[tree.args.f] = {};
           }
+          if (states[tree.args.props.key]) {
+            tree.internal.state = states[tree.args.props.key];
+          }
+        }
+        return new Promise(resolve =>
+          transform(
+            tree,
+            function connected(childVDOM) {
+              resolve((vdom.children[key] = childVDOM));
+            },
+            async function update(state) {
+              if (updating) {
+                updateQueue.push(() => update(state));
+                return;
+              }
+
+              updating = true;
+
+              let prev = vdom.children[key];
+              if (prev.args) {
+                spec.internal.children[tree.args.f][tree.args.props.key] = state;
+              }
+              let next = await work(prev);
+              vdom.children[key] = patch(prev, next, prev.element.parentElement);
+
+              updating = false;
+
+              if (updateQueue.length > 0) {
+                await runFirstUpdate();
+              }
+            },
+            function reset() {
+              let prev = vdom.children[key];
+              if (prev.args) {
+                spec.internal.children[tree.args.f][tree.args.props.key] = [];
+              }
+            }
+          )
         );
-      })
+      })(vdom.children[key])
     );
   }
 
-  let callback = () => {
-    vdom.props = {
-      ...vdom.props,
-      oncreate: el => {
-        spec.internal.node = el;
-        spec.internal.active = true;
-        runEffects();
-      },
-      onupdate: el => {
-        spec.internal.node = el;
-        runEffects();
-      },
-      ondestroy: () => {
-        spec.internal.active = false;
-        saveState();
-        for (let key in spec.internal.effects) {
-          let { cleanup } = spec.internal.effects[key];
-          if (cleanup) cleanup();
+  let notifyParent = () => {
+    connected(
+      Object.assign(vdom, {
+        args: spec.args,
+        internal: spec.internal,
+        props: {
+          ...vdom.props,
+          oncreate: el => {
+            spec.internal.node = el;
+            spec.internal.active = true;
+            runEffects();
+          },
+          onupdate: el => {
+            spec.internal.node = el;
+            runEffects();
+          },
+          ondestroy: () => {
+            reset();
+            spec.internal.active = false;
+            for (let key in spec.internal.effects) {
+              let { cleanup } = spec.internal.effects[key];
+              if (cleanup) cleanup();
+            }
+          }
         }
-      }
-    };
-    cb(Object.assign(vdom, { args: spec.args, internal: spec.internal }));
+      })
+    );
   };
 
   await Promise.all(promises);
@@ -160,13 +190,13 @@ let transform = async (spec, cb, saveState) => {
       vdom,
       next => {
         vdom = next;
-        callback();
+        notifyParent();
       },
-      saveState
+      update
     );
   }
 
-  callback();
+  notifyParent();
 };
 
 export default { render, state, effect, h };

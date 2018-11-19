@@ -2,7 +2,7 @@ require("browser-env")();
 require("@babel/polyfill");
 
 let test = require("ava");
-let { h, render, state, effect } = require("../dist/wigly.es5");
+let { h, render, state, effect } = require("../dist/wigly.es6");
 
 let sleep = (t = 1) => new Promise(r => setTimeout(r, t));
 
@@ -121,11 +121,7 @@ test("parent merges vdom", async t => {
     );
   };
 
-  function App() {
-    return <Parent />;
-  }
-
-  let element = await render(<App />, document.body);
+  let element = await render(<Parent />, document.body);
   t.deepEqual(element.textContent, "");
 
   childF(["hi"]);
