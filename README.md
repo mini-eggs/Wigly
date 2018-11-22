@@ -69,24 +69,6 @@ function App(props) {
 wigly.render(<App userId={123} />, document.body);
 ```
 
-## Advanced, lazy/async components
-
-```javascript
-import wigly from "wigly";
-
-// A function that returns a promise that will resolve to a
-// component can be used as a valid wigly component.
-let LazyChild = () => import("./components/child");
-
-let App = () => (
-  <div>
-    <LazyChild />
-  </div>
-);
-
-wigly.render(<App />, document.body);
-```
-
 ## Advanced, creating a 'styled-components' package
 
 ```javascript

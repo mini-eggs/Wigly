@@ -1,142 +1,45 @@
 require("browser-env")();
-require("@babel/polyfill");
 
 let test = require("ava");
 let { h, render, state, effect } = require("../dist/wigly.es6");
 
-let sleep = (t = 1) => new Promise(r => setTimeout(r, t));
+let click = async query => {
+  let $ = document.querySelector.bind(document);
+  let sleep = (t = 0) => new Promise(r => setTimeout(r, t));
+  $(query).click();
+  await sleep();
+};
 
-test("'Hello, World'", async t => {
+test("'Hello, World'", t => {
   let App = () => {
     let [msg] = state("Hello, World!");
     return <div>{msg}</div>;
   };
 
-  let element = await render(<App />, document.body);
-  t.deepEqual(element.textContent, "Hello, World!");
+  render(<App />, document.body);
+
+  t.deepEqual(document.body.textContent, "Hello, World!");
 });
 
-test("Conditional components work as expected.", async t => {
-  let App = () => {
-    let [active, set] = state(true);
-    return (
-      <div>
-        {active && <h1>hi</h1>}
-        <button onclick={() => set(!active)} />
-      </div>
-    );
-  };
-
-  let element = await render(<App />, document.body);
-  t.deepEqual(element.textContent, "hi");
-
-  element.querySelector("button").click();
-  await sleep();
-
-  t.deepEqual(element.textContent, "");
-});
-
-test("Immediate component children lifecycles.", async t => {
-  let parentMounted = false;
-  let childMounted = false;
-
-  function Child() {
-    effect(() => {
-      childMounted = true;
-    });
-
-    return <div>child</div>;
-  }
-
-  function Parent() {
-    effect(() => {
-      parentMounted = true;
-    });
-
-    return (
-      <div>
-        <Child />
-      </div>
-    );
-  }
-
-  await render(<Parent />, document.body);
-
-  t.deepEqual(parentMounted, true);
-  t.deepEqual(childMounted, true);
-});
-
-test("Immediate components are removed properly.", async t => {
-  let setter;
-
-  function ChildOne() {
-    return <div>here we go</div>;
-  }
-
-  function ChildTwo() {
-    return <ChildOne />;
-  }
-
-  function Parent() {
-    let [active, set] = state(true);
-    setter = set;
-    return <div>{active && <ChildTwo />}</div>;
-  }
-
-  let element = await render(<Parent />, document.body);
-  t.deepEqual(element.textContent, "here we go");
-
-  setter(false);
-  await sleep();
-
-  t.deepEqual(element.textContent, "");
-});
-
-test("parent merges vdom", async t => {
-  let childF;
-  let parentF;
-
+test("Effects works as mounted and unmounted.", async t => {
+  t.plan(2);
   let Child = () => {
-    let [list, set] = state([]);
-
-    childF = set;
-
+    effect(() => {
+      t.deepEqual(true, true);
+      return () => t.deepEqual(true, true);
+    });
+    return h("div", {}, "Child goes here.");
+  };
+  let App = () => {
+    let [displayChild, set] = state(false);
     return (
       <div>
-        {list.map(item => (
-          <i>{item}</i>
-        ))}
+        <button onclick={() => set(!displayChild)}>click me</button>
+        <div>{displayChild && <Child />}</div>
       </div>
     );
   };
-
-  let Parent = () => {
-    let [_, set] = state(0);
-    parentF = set;
-
-    return (
-      <div>
-        <Child />
-      </div>
-    );
-  };
-
-  let element = await render(<Parent />, document.body);
-  t.deepEqual(element.textContent, "");
-
-  childF(["hi"]);
-  await sleep();
-
-  t.deepEqual(element.textContent, "hi");
-
-  parentF(1);
-  await sleep();
-
-  t.deepEqual(element.textContent, "hi");
-});
-
-test("Basic lazy components work as expected.", async t => {
-  let LazyChild = () => Promise.resolve({ default: () => <div>here we go</div> });
-  let element = await render(<LazyChild />, document.body);
-  t.deepEqual(element.textContent, "here we go");
+  render(<App />, document.body);
+  await click("button");
+  await click("button");
 });

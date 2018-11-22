@@ -1,202 +1,175 @@
-import { h as createElement, patch } from "superfine";
+import * as superfine from "superfine";
 
-let COMPONENT_WRAPPER = "λ"; // Don't pass components directly to Superfine, it impact our ability to support async/lazy components.
+// globals
+let currentlyExecutingComponent; // for hooks
+let globalComponentBag = new WeakMap(); // for keeping track of lists of components
+let componentBag = new Map(); // holds given component state
+// let defer = f => () => Promise.resolve().then.bind(Promise.resolve())(f);
 
-let current; // Currentyl executing component for hooks.
-
-export let render = (f, el) => {
-  return new Promise(resolve => {
-    let last = null;
-    (function render() {
-      transform(
-        f,
-        vdom => {
-          last = patch(last, vdom, el);
-          resolve(last.element);
-        },
-        render
-      );
-    })();
+let copy = f => {
+  let copied = (...args) => f(...args);
+  Object.defineProperty(copied, "isCopied", {
+    value: true,
+    writable: false
   });
+  return copied;
 };
 
-export let h = (f, props, ...children) => {
-  let orig = f;
-  props = props || {};
-  props.key = props.key || 0;
-  if (typeof f === "function") f = COMPONENT_WRAPPER;
+let getComponentEnv = ref => {
+  let env = componentBag.get(ref);
+  return { ...env };
+};
+
+let setComponentEnv = (ref, next) => {
+  let base = { effects: {}, states: {}, stateCount: 0, effectCount: 0 };
+  let last = getComponentEnv(ref);
+  componentBag.set(ref, { ...base, ...last, ...next });
+  return getComponentEnv(ref);
+};
+
+let traverseTree = (tree, f) => {
+  let next = f(tree);
   return {
-    ...createElement(f, props, ...children),
-    args: { f: orig, props, children },
-    internal: { effects: [], effectCount: 0, state: [], stateCount: 0, node: null, active: false, children: {} }
+    ...next,
+    children: next.children.filter(child => !!child).map(child => traverseTree(child, f))
   };
 };
 
+let updateComponent = ref => {
+  let { props, children, vdom, el } = getComponentEnv(ref);
+
+  if (!el || !el.parentElement) {
+    return;
+  }
+
+  let latestVDOM = traverseTree(vdom, item => {
+    if (item.internal) {
+      if (item.internal.ref() === item.internal.ref()) {
+        let { vdom } = item.internal.env();
+        return vdom || item;
+      }
+      return item;
+    } else {
+      return item;
+    }
+  });
+
+  vdom = superfine.patch(latestVDOM, h(ref, props, ...children), el.parentElement);
+  setComponentEnv({ vdom });
+};
+
+let runEffects = async ref => {
+  let { effects, el } = getComponentEnv(ref);
+
+  for (let key in effects) {
+    let effect = effects[key];
+
+    if (effect.opts.length < 1 || effect.prev.join() !== effect.opts.join()) {
+      if (effect.cleanup) effect.cleanup();
+      effects[key] = { ...effect, prev: effect.opts, cleanup: await effect.f(el) };
+    }
+  }
+
+  setComponentEnv({ effects });
+};
+
+export let h = (f, props, ...children) => {
+  let isComponent = typeof f === "function";
+  props = props || {};
+  props.key = props.key || 0;
+
+  if (isComponent && !f.isCopied) {
+    let possible = globalComponentBag.get(f);
+    if (possible) {
+      let specific = possible.get(props.key);
+      if (specific) {
+        f = specific;
+      } else {
+        f = copy(f);
+        possible.set(props.key, f);
+      }
+    } else {
+      globalComponentBag.set(f, new Map());
+      return h(f, props, ...children);
+    }
+  }
+
+  setComponentEnv(f, { effectCount: 0, stateCount: 0 });
+  currentlyExecutingComponent = f;
+
+  return (vdom => {
+    return (vdom = {
+      ...vdom,
+      props: {
+        ...vdom.props,
+        ...(!isComponent
+          ? {}
+          : {
+              oncreate: el => {
+                setComponentEnv(f, { vdom, el, props, children });
+                setTimeout(runEffects, 1, f);
+              },
+              onupdate: el => {
+                setComponentEnv(f, { vdom, el, props, children });
+                setTimeout(runEffects, 1, f);
+              },
+              ondestroy: () => {
+                let env = getComponentEnv(f);
+                setComponentEnv(f, { states: {} });
+                if (Object.keys(env).length) {
+                  for (let key of Object.keys(env.effects)) {
+                    let { cleanup } = env.effects[key];
+                    if (cleanup) cleanup();
+                  }
+                }
+              }
+            })
+      },
+      internal: {
+        ref: () => f,
+        env: () => getComponentEnv(f)
+      }
+    });
+  })(superfine.h(f, props, children));
+};
+
+export let render = (f, el) => superfine.patch(null, f, el).element;
+
 export let state = init => {
-  let component = current;
-  let key = component.internal.stateCount++;
-  let val = component.internal.state[key];
-  if (typeof val === "undefined") val = init;
+  let ref = currentlyExecutingComponent;
+  let { states, stateCount } = getComponentEnv(ref);
+  let index = stateCount++;
+  let val = states[index];
+
+  if (typeof val === "undefined") {
+    if (typeof init === "function") {
+      val = init();
+    } else {
+      val = init;
+    }
+  }
+
+  setComponentEnv(ref, { stateCount });
+
   return [
     val,
     next => {
-      component.internal.state[key] = next;
-      component.internal.update();
+      let { states } = getComponentEnv(ref);
+      states[index] = next;
+      setComponentEnv(ref, { states });
+      updateComponent(ref);
     }
   ];
 };
 
-export let effect = (f, ...args) => {
-  let key = current.internal.effectCount++;
-  let last = current.internal.effects[key];
-  current.internal.effects[key] = { ...last, f, args };
+export let effect = (f, ...opts) => {
+  let ref = currentlyExecutingComponent;
+  let { effects, effectCount } = getComponentEnv(ref);
+  let index = effectCount++;
+  let base = { prev: [], cleanup: () => {} };
+  let prev = effects[index] || {};
+  effects[index] = { ...base, ...prev, f, opts };
+  setComponentEnv(ref, { effects, effectCount });
 };
 
-let transform = async (spec, connected, update, reset) => {
-  if (!spec.args) return connected(spec, {}); // this is a text/leaf node
-
-  let vdom;
-
-  let register = () => {
-    current = {
-      ...spec,
-      internal: {
-        ...spec.internal,
-        update: () => {
-          update(spec.internal.state);
-        }
-      }
-    };
-  };
-
-  register();
-
-  let runEffects = async () => {
-    if (!spec.internal.active) return;
-    for (let key in spec.internal.effects) {
-      let { f, args, last, cleanup } = spec.internal.effects[key];
-      if (typeof last === "undefined" || args.length === 0 || last.join() !== args.join()) {
-        if (cleanup) cleanup();
-        spec.internal.effects[key].last = args;
-        cleanup = await f(spec.internal.node);
-        spec.internal.effects[key].cleanup = cleanup;
-      }
-    }
-  };
-
-  vdom = createElement(spec.args.f, spec.args.props, spec.args.children);
-
-  if (vdom instanceof Promise) {
-    let file = await vdom;
-    register();
-    vdom = createElement(file.default, spec.args.props, spec.args.children);
-  }
-
-  let promises = [];
-  for (let key in vdom.children) {
-    let updating = false;
-    let updateQueue = [];
-
-    async function runFirstUpdate() {
-      await updateQueue.shift()();
-      if (updateQueue.length > 0) {
-        await runFirstUpdate();
-      }
-    }
-
-    promises.push(
-      (function work(tree) {
-        if (tree.args) {
-          let states;
-          if (!(states = spec.internal.children[tree.args.f])) {
-            states = spec.internal.children[tree.args.f] = {};
-          }
-          if (states[tree.args.props.key]) {
-            tree.internal.state = states[tree.args.props.key];
-          }
-        }
-        return new Promise(resolve =>
-          transform(
-            tree,
-            function connected(childVDOM) {
-              resolve((vdom.children[key] = childVDOM));
-            },
-            async function update(state) {
-              if (updating) {
-                updateQueue.push(() => update(state));
-                return;
-              }
-
-              updating = true;
-
-              let prev = vdom.children[key];
-              if (prev.args) {
-                spec.internal.children[tree.args.f][tree.args.props.key] = state;
-              }
-              let next = await work(prev);
-              vdom.children[key] = patch(prev, next, prev.element.parentElement);
-
-              updating = false;
-
-              if (updateQueue.length > 0) {
-                await runFirstUpdate();
-              }
-            },
-            function reset() {
-              let prev = vdom.children[key];
-              if (prev.args) {
-                spec.internal.children[tree.args.f][tree.args.props.key] = [];
-              }
-            }
-          )
-        );
-      })(vdom.children[key])
-    );
-  }
-
-  let notifyParent = () => {
-    connected(
-      Object.assign(vdom, {
-        args: spec.args,
-        internal: spec.internal,
-        props: {
-          ...vdom.props,
-          oncreate: el => {
-            spec.internal.node = el;
-            spec.internal.active = true;
-            runEffects();
-          },
-          onupdate: el => {
-            spec.internal.node = el;
-            runEffects();
-          },
-          ondestroy: () => {
-            reset();
-            spec.internal.active = false;
-            for (let key in spec.internal.effects) {
-              let { cleanup } = spec.internal.effects[key];
-              if (cleanup) cleanup();
-            }
-          }
-        }
-      })
-    );
-  };
-
-  await Promise.all(promises);
-
-  if (vdom.name === COMPONENT_WRAPPER) {
-    return transform(
-      vdom,
-      next => {
-        vdom = next;
-        notifyParent();
-      },
-      update
-    );
-  }
-
-  notifyParent();
-};
-
-export default { render, state, effect, h };
+export default { h, render, state, effect };

@@ -1,21 +1,21 @@
 {
   "name": "wigly",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "main": "dist/wigly.es5.js",
   "module": "src/main.js",
   "scripts": {
     "build": "rm -rf dist && webpack --mode production && gzip -f -k dist/*",
-    "test": "ava -s",
+    "test": "ava",
     "size": "wc -c dist/*"
   },
   "dependencies": {
     "superfine": "^6.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.1.6",
     "@babel/plugin-transform-react-jsx": "^7.1.6",
-    "@babel/polyfill": "^7.0.0",
     "@babel/preset-env": "^7.1.6",
-    "ava": "^1.0.0-rc.1",
+    "ava": "1.0.0-rc.2",
     "babel-loader": "^8.0.4",
     "browser-env": "^3.2.5",
     "webpack": "^4.25.1",
