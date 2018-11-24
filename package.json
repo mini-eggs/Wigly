@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "main": "dist/wigly.es5.js",
   "module": "src/main.js",
   "scripts": {

@@ -17,13 +17,10 @@ let debounce = f => {
 // funcs
 let runEffects = (el, self) => {
   for (let key in self.effects) {
-    let effect = self.effects[key];
-    if (
-      effect &&
-      (typeof effect.prev === "undefined" || effect.args.length === 0 || effect.prev.join() !== effect.args.join())
-    ) {
-      if (effect.cleanup) effect.cleanup();
-      self.effects[key] = { prev: effect.args, cleanup: effect.f(el) };
+    let { prev, args = [], f, cleanup } = self.effects[key];
+    if (typeof prev === "undefined" || args.length === 0 || prev.join() !== args.join()) {
+      if (cleanup) cleanup();
+      self.effects[key] = { prev: args, cleanup: f(el) };
     }
   }
 };
@@ -157,9 +154,7 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
 };
 
 export let h = (f, props, ...children) => {
-  props = props || {};
-  children = [].concat.apply([], children);
-  return { f, props, children };
+  return { f, props: props || {}, children: [].concat.apply([], children) };
 };
 
 export let state = init => {
@@ -195,7 +190,7 @@ export let render = (f, el) => {
 
   defer(() => {
     transformer(
-      f,
+      h(() => f),
       () => ({}),
       () => ({}),
       vdom => {
