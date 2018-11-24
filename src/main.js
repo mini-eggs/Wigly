@@ -1,20 +1,8 @@
 import { h as createElement, patch } from "superfine";
 
-// global
 let current;
-
-// util
 let defer = Promise.resolve().then.bind(Promise.resolve());
 
-let debounce = f => {
-  let inst;
-  return () => {
-    clearTimeout(inst);
-    inst = setTimeout(f);
-  };
-};
-
-// funcs
 let runEffects = (el, self) => {
   for (let key in self.effects) {
     let { prev, args = [], f, cleanup } = self.effects[key];
@@ -55,7 +43,7 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
       children: {},
       ...getEnv(f, props.key),
       iter: 0,
-      update: debounce(() => {
+      update: () => {
         transformer(
           spec,
           getEnv,
@@ -67,7 +55,7 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
           },
           updateVDOM
         );
-      })
+      }
     };
 
     current = self;
