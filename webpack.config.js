@@ -29,7 +29,7 @@ module.exports = [
                 [
                   "@babel/preset-env",
                   {
-                    // targets: { browsers: ["chrome 70"] },
+                    targets: { browsers: ["last 2 versions"] }
                   }
                 ]
               ]

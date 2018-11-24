@@ -1,145 +1,171 @@
-import * as superfine from "superfine";
+import { h as createElement, patch } from "superfine";
 
-// globals
-let currentlyExecutingComponent; // for hooks
-let globalComponentBag = new WeakMap(); // for keeping track of lists of components
-let componentBag = new Map(); // holds given component state
-// let defer = f => () => Promise.resolve().then.bind(Promise.resolve())(f);
+// global
+let current;
 
-let copy = f => {
-  let copied = (...args) => f(...args);
-  Object.defineProperty(copied, "isCopied", {
-    value: true,
-    writable: false
-  });
-  return copied;
-};
+// util
+let defer = Promise.resolve().then.bind(Promise.resolve());
 
-let getComponentEnv = ref => {
-  let env = componentBag.get(ref);
-  return { ...env };
-};
-
-let setComponentEnv = (ref, next) => {
-  let base = { effects: {}, states: {}, stateCount: 0, effectCount: 0 };
-  let last = getComponentEnv(ref);
-  componentBag.set(ref, { ...base, ...last, ...next });
-  return getComponentEnv(ref);
-};
-
-let traverseTree = (tree, f) => {
-  let next = f(tree);
-  return {
-    ...next,
-    children: next.children.filter(child => !!child).map(child => traverseTree(child, f))
+let debounce = f => {
+  let inst;
+  return () => {
+    clearTimeout(inst);
+    inst = setTimeout(f);
   };
 };
 
-let updateComponent = ref => {
-  let { props, children, vdom, el } = getComponentEnv(ref);
+// funcs
+let runEffects = (el, self) => {
+  for (let key in self.effects) {
+    let effect = self.effects[key];
+    if (
+      effect &&
+      (typeof effect.prev === "undefined" || effect.args.length === 0 || effect.prev.join() !== effect.args.join())
+    ) {
+      if (effect.cleanup) effect.cleanup();
+      self.effects[key] = { prev: effect.args, cleanup: effect.f(el) };
+    }
+  }
+};
 
-  if (!el || !el.parentElement) {
+let traverse = (tree, f) => {
+  Object.assign(tree, f(tree));
+  if (tree.children) {
+    for (let key in tree.children) {
+      tree.children[key] = traverse(tree.children[key], f);
+    }
+  }
+  return tree;
+};
+
+let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
+  if (typeof spec === "string" || typeof spec === "number") {
+    giveVDOM(spec);
     return;
   }
 
-  let latestVDOM = traverseTree(vdom, item => {
-    if (item.internal) {
-      if (item.internal.ref() === item.internal.ref()) {
-        let { vdom } = item.internal.env();
-        return vdom || item;
+  let { f, props, children = [] } = spec;
+
+  children = children.filter(item => !!item);
+
+  if (typeof f === "function") {
+    let lastvdom;
+
+    let self = {
+      f,
+      states: [],
+      effects: [],
+      children: {},
+      ...getEnv(f, props.key),
+      iter: 0,
+      update: debounce(() => {
+        transformer(
+          spec,
+          getEnv,
+          giveEnv,
+          next => {
+            if (lastvdom && lastvdom.element && lastvdom.element.parentElement) {
+              lastvdom = patch(lastvdom, next, lastvdom.element.parentElement);
+            }
+          },
+          updateVDOM
+        );
+      })
+    };
+
+    current = self;
+    let res = f({ ...props, children });
+
+    if (res instanceof Promise) {
+      let file = await res;
+      current = self;
+      res = file.default({ ...props, children });
+    }
+
+    transformer(
+      res,
+      (component, key) => {
+        return self.children[component] ? self.children[component][key] : {};
+      },
+      (component, key, env) => {
+        self.children[component] = { ...self.children[component], [key]: env };
+      },
+      vdom => {
+        let { oncreate, onupdate, ondestroy } = { ...vdom.props };
+        giveVDOM(
+          (lastvdom = Object.assign(vdom, {
+            props: {
+              ...vdom.props,
+              oncreate: el => {
+                if (oncreate) oncreate(el);
+                defer(() => {
+                  runEffects(el, self);
+                  giveEnv(f, props.key, self);
+                });
+              },
+              onupdate: el => {
+                if (onupdate) onupdate(el);
+                defer(() => {
+                  updateVDOM(f, props.key, lastvdom);
+                  runEffects(el, self);
+                  giveEnv(f, props.key, self);
+                });
+              },
+              ondestroy: () => {
+                if (ondestroy) ondestroy();
+                for (let effect of self.effects) {
+                  if (effect && effect.cleanup) {
+                    effect.cleanup();
+                  }
+                }
+                giveEnv(f, props.key, {}); // reset state
+              }
+            },
+            internal: { f, self }
+          }))
+        );
+      },
+      (component, key, vdom) => {
+        Object.assign(
+          lastvdom,
+          traverse(lastvdom, item => {
+            if (item.internal && item.internal.f === component && key === item.props.key) {
+              return vdom;
+            } else {
+              return item;
+            }
+          })
+        );
+        // updateVDOM(f, props.key, lastvdom); // we probably need this yea?
       }
-      return item;
-    } else {
-      return item;
-    }
-  });
-
-  vdom = superfine.patch(latestVDOM, h(ref, props, ...children), el.parentElement);
-  setComponentEnv({ vdom });
-};
-
-let runEffects = async ref => {
-  let { effects, el } = getComponentEnv(ref);
-
-  for (let key in effects) {
-    let effect = effects[key];
-
-    if (effect.opts.length < 1 || effect.prev.join() !== effect.opts.join()) {
-      if (effect.cleanup) effect.cleanup();
-      effects[key] = { ...effect, prev: effect.opts, cleanup: await effect.f(el) };
-    }
+    );
+  } else {
+    giveVDOM(
+      createElement(
+        f,
+        props,
+        await Promise.all(
+          children.map(child => {
+            return new Promise(resolve => {
+              transformer(child, getEnv, giveEnv, resolve, updateVDOM);
+            });
+          })
+        )
+      )
+    );
   }
-
-  setComponentEnv({ effects });
 };
 
 export let h = (f, props, ...children) => {
-  let isComponent = typeof f === "function";
   props = props || {};
-  props.key = props.key || 0;
-
-  if (isComponent && !f.isCopied) {
-    let possible = globalComponentBag.get(f);
-    if (possible) {
-      let specific = possible.get(props.key);
-      if (specific) {
-        f = specific;
-      } else {
-        f = copy(f);
-        possible.set(props.key, f);
-      }
-    } else {
-      globalComponentBag.set(f, new Map());
-      return h(f, props, ...children);
-    }
-  }
-
-  setComponentEnv(f, { effectCount: 0, stateCount: 0 });
-  currentlyExecutingComponent = f;
-
-  return (vdom => {
-    return (vdom = {
-      ...vdom,
-      props: {
-        ...vdom.props,
-        ...(!isComponent
-          ? {}
-          : {
-              oncreate: el => {
-                setComponentEnv(f, { vdom, el, props, children });
-                setTimeout(runEffects, 1, f);
-              },
-              onupdate: el => {
-                setComponentEnv(f, { vdom, el, props, children });
-                setTimeout(runEffects, 1, f);
-              },
-              ondestroy: () => {
-                let env = getComponentEnv(f);
-                setComponentEnv(f, { states: {} });
-                if (Object.keys(env).length) {
-                  for (let key of Object.keys(env.effects)) {
-                    let { cleanup } = env.effects[key];
-                    if (cleanup) cleanup();
-                  }
-                }
-              }
-            })
-      },
-      internal: {
-        ref: () => f,
-        env: () => getComponentEnv(f)
-      }
-    });
-  })(superfine.h(f, props, children));
+  children = [].concat.apply([], children);
+  return { f, props, children };
 };
 
-export let render = (f, el) => superfine.patch(null, f, el).element;
-
 export let state = init => {
-  let ref = currentlyExecutingComponent;
-  let { states, stateCount } = getComponentEnv(ref);
-  let index = stateCount++;
-  let val = states[index];
+  let curr = current;
+  let key = curr.iter++;
+  let val = curr.states[key];
 
   if (typeof val === "undefined") {
     if (typeof init === "function") {
@@ -149,27 +175,43 @@ export let state = init => {
     }
   }
 
-  setComponentEnv(ref, { stateCount });
-
   return [
     val,
     next => {
-      let { states } = getComponentEnv(ref);
-      states[index] = next;
-      setComponentEnv(ref, { states });
-      updateComponent(ref);
+      curr.states[key] = next;
+      defer(curr.update);
     }
   ];
 };
 
-export let effect = (f, ...opts) => {
-  let ref = currentlyExecutingComponent;
-  let { effects, effectCount } = getComponentEnv(ref);
-  let index = effectCount++;
-  let base = { prev: [], cleanup: () => {} };
-  let prev = effects[index] || {};
-  effects[index] = { ...base, ...prev, f, opts };
-  setComponentEnv(ref, { effects, effectCount });
+export let effect = (f, ...args) => {
+  let key = current.iter++;
+  let last = current.effects[key];
+  current.effects[key] = { prev: [], ...last, f, args };
 };
 
-export default { h, render, state, effect };
+export let render = (f, el) => {
+  let cb = () => {};
+
+  defer(() => {
+    transformer(
+      f,
+      () => ({}),
+      () => ({}),
+      vdom => {
+        patch(null, vdom, el);
+        cb(vdom.element);
+      },
+      () => {}
+    );
+  });
+
+  // promise mock
+  return {
+    then: f => {
+      cb = f;
+    }
+  };
+};
+
+export default { render, state, effect, h };
