@@ -1,12 +1,12 @@
-import { h as createElement, patch } from "superfine";
+let superfine = require("superfine");
 
 let current;
 let defer = Promise.resolve().then.bind(Promise.resolve());
 
 let runEffects = (el, self) => {
   for (let key in self.effects) {
-    let { prev, args = [], f, cleanup } = self.effects[key];
-    if (typeof prev === "undefined" || args.length === 0 || prev.join() !== args.join()) {
+    let { prev, args, f, cleanup } = self.effects[key];
+    if (args && f && (typeof prev === "undefined" || args.length === 0 || prev.join() !== args.join())) {
       if (cleanup) cleanup();
       self.effects[key] = { prev: args, cleanup: f(el) };
     }
@@ -31,7 +31,7 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
 
   let { f, props, children = [] } = spec;
 
-  children = children.filter(item => !!item);
+  children = children.filter(item => !!item); // remove nullies
 
   if (typeof f === "function") {
     let lastvdom;
@@ -50,7 +50,7 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
           giveEnv,
           next => {
             if (lastvdom && lastvdom.element && lastvdom.element.parentElement) {
-              lastvdom = patch(lastvdom, next, lastvdom.element.parentElement);
+              lastvdom = superfine.patch(lastvdom, next, lastvdom.element.parentElement);
             }
           },
           updateVDOM
@@ -111,22 +111,25 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
         );
       },
       (component, key, vdom) => {
-        Object.assign(
-          lastvdom,
-          traverse(lastvdom, item => {
-            if (item.internal && item.internal.f === component && key === item.props.key) {
-              return vdom;
-            } else {
-              return item;
-            }
-          })
+        updateVDOM(
+          f,
+          props.key,
+          Object.assign(
+            lastvdom,
+            traverse(lastvdom, item => {
+              if (item.internal && item.internal.f === component && key === item.props.key) {
+                return vdom;
+              } else {
+                return item;
+              }
+            })
+          )
         );
-        // updateVDOM(f, props.key, lastvdom); // we probably need this yea?
       }
     );
   } else {
     giveVDOM(
-      createElement(
+      superfine.h(
         f,
         props,
         await Promise.all(
@@ -141,11 +144,9 @@ let transformer = async (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
   }
 };
 
-export let h = (f, props, ...children) => {
-  return { f, props: props || {}, children: [].concat.apply([], children) };
-};
+let h = (f, props, ...children) => ({ f, props: props || {}, children: [].concat.apply([], children) });
 
-export let state = init => {
+let state = init => {
   let curr = current;
   let key = curr.iter++;
   let val = curr.states[key];
@@ -167,34 +168,35 @@ export let state = init => {
   ];
 };
 
-export let effect = (f, ...args) => {
+let effect = (f, ...args) => {
   let key = current.iter++;
   let last = current.effects[key];
   current.effects[key] = { prev: [], ...last, f, args };
 };
 
-export let render = (f, el) => {
-  let cb = () => {};
-
-  defer(() => {
+let render = (f, el) => {
+  return new Promise(resolve => {
     transformer(
       h(() => f),
       () => ({}),
       () => ({}),
       vdom => {
-        patch(null, vdom, el);
-        cb(vdom.element);
+        superfine.patch(null, vdom, el);
+        resolve(vdom.element);
       },
       () => {}
     );
   });
-
-  // promise mock
-  return {
-    then: f => {
-      cb = f;
-    }
-  };
 };
 
-export default { render, state, effect, h };
+module.exports = {
+  // base
+  h,
+  render,
+  state,
+  effect,
+  // react esque
+  createElement: h,
+  useState: state,
+  useEffect: effect
+};
