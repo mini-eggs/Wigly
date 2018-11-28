@@ -1,22 +1,26 @@
 require("browser-env")();
 
 let test = require("ava");
-let { h, render, state, effect } = require("../src/main");
+let { h, render, state, effect } = require("../");
 
 let sleep = t => new Promise(r => setTimeout(r, t));
 
-test("'Hello, World'", async t => {
+test("'Hello, World'", t => {
+  t.plan(1);
+
   let App = () => {
     let [msg] = state("Hello, World!");
     return <div>{msg}</div>;
   };
 
-  await render(<App />, document.body);
+  render(<App />, document.body).then(el => {
+    t.deepEqual(el.textContent, "Hello, World!");
+  });
 
-  t.deepEqual(document.body.textContent, "Hello, World!");
+  return sleep();
 });
 
-test("Effects works as mounted and unmounted.", async t => {
+test("Effects works as mounted and unmounted.", t => {
   t.plan(2);
 
   let Child = () => {
@@ -37,10 +41,10 @@ test("Effects works as mounted and unmounted.", async t => {
     );
   };
 
-  let el = await render(<App />, document.body);
+  render(<App />, document.body).then(el => {
+    el.querySelector("button").click();
+    el.querySelector("button").click();
+  });
 
-  el.querySelector("button").click();
-  el.querySelector("button").click();
-
-  await sleep();
+  return sleep();
 });

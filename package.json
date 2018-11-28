@@ -1,25 +1,24 @@
 {
   "name": "wigly",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "main": "dist/wigly.es5.js",
-  "module": "src/main.js",
   "scripts": {
-    "build": "rm -rf dist && webpack --mode production && gzip -f -k dist/*",
+    "start": "npm run start:clean && npm run start:gcc && npm run start:gzip",
+    "start:clean": "rm -rf dist && mkdir -p dist",
+    "start:gcc": "npm run start:gcc:es5 && npm run start:gcc:es6",
+    "start:gcc:es5": "google-closure-compiler --assume_function_wrapper --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT5 --generate_exports --export_local_property_definitions --compilation_level SIMPLE --js=src/main.js --js_output_file=dist/wigly.es5.js",
+    "start:gcc:es6": "google-closure-compiler --assume_function_wrapper --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --generate_exports --export_local_property_definitions --compilation_level SIMPLE --js=src/main.js --js_output_file=dist/wigly.es6.js",
+    "start:gzip": "gzip dist/* -k -f",
     "test": "ava",
     "size": "wc -c dist/*"
-  },
-  "dependencies": {
-    "superfine": "^6.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.1.6",
     "@babel/plugin-transform-react-jsx": "^7.1.6",
-    "@babel/preset-env": "^7.1.6",
     "ava": "1.0.0-rc.2",
     "babel-loader": "^8.0.4",
     "browser-env": "^3.2.5",
-    "webpack": "^4.25.1",
-    "webpack-cli": "^3.1.2"
+    "google-closure-compiler": "^20181125.0.1"
   },
   "ava": {
     "babel": {
