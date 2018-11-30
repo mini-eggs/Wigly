@@ -3,6 +3,9 @@ require("browser-env")();
 let test = require("ava");
 let { h, render, state, effect } = require("../");
 
+// console.log(require("../"));
+// process.exit(0);
+
 let sleep = t => new Promise(r => setTimeout(r, t));
 
 test("'Hello, World'", t => {

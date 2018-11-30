@@ -1,13 +1,13 @@
 {
   "name": "wigly",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "main": "dist/wigly.es5.js",
   "scripts": {
     "start": "npm run start:clean && npm run start:gcc && npm run start:gzip",
     "start:clean": "rm -rf dist && mkdir -p dist",
     "start:gcc": "npm run start:gcc:es5 && npm run start:gcc:es6",
-    "start:gcc:es5": "google-closure-compiler --assume_function_wrapper --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT5 --generate_exports --export_local_property_definitions --compilation_level SIMPLE --js=src/main.js --js_output_file=dist/wigly.es5.js",
-    "start:gcc:es6": "google-closure-compiler --assume_function_wrapper --use_types_for_optimization --language_in ECMASCRIPT_NEXT --language_out ECMASCRIPT_2015 --generate_exports --export_local_property_definitions --compilation_level SIMPLE --js=src/main.js --js_output_file=dist/wigly.es6.js",
+    "start:gcc:es5": "node_modules/google-closure-compiler-linux/compiler --generate_exports --export_local_property_definitions --isolation_mode IIFE --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level SIMPLE --js_output_file=dist/wigly.es5.js 'src/**.js'",
+    "start:gcc:es6": "node_modules/google-closure-compiler-linux/compiler --generate_exports --export_local_property_definitions --isolation_mode IIFE --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level SIMPLE --js_output_file=dist/wigly.es6.js 'src/**.js'",
     "start:gzip": "gzip dist/* -k -f",
     "test": "ava",
     "size": "wc -c dist/*"
@@ -18,7 +18,7 @@
     "ava": "1.0.0-rc.2",
     "babel-loader": "^8.0.4",
     "browser-env": "^3.2.5",
-    "google-closure-compiler": "^20181125.0.1"
+    "google-closure-compiler-linux": "^20181125.0.1"
   },
   "ava": {
     "babel": {

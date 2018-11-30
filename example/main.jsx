@@ -1,5 +1,6 @@
 // @jsx wigly.h
 import wigly, { state } from "../src/main";
+// import wigly, { state } from "../";
 
 let Counter = ({ title }) => {
   let [count, set] = state(0);

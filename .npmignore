@@ -5,3 +5,4 @@ test
 .cache
 .webpack.config.js
 backup
+src
