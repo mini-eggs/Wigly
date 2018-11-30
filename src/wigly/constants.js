@@ -25,16 +25,14 @@ export let runEffects = (el, self) => {
   for (let key in self.effects) {
     let { prev, args, f, cleanup } = self.effects[key];
     if (args && f && (typeof prev === "undefined" || args.length === 0 || prev.join() !== args.join())) {
-      if (cleanup) cleanup();
-
-      cleanup = f(el);
-      if (cleanup && cleanup.then) {
-        cleanup.then(cleanup => {
-          self.effects[key] = { prev: args, cleanup };
-        });
-      } else {
-        self.effects[key] = { prev: args, cleanup };
+      if (cleanup) {
+        if (cleanup.then) {
+          cleanup.then(f => f && f());
+        } else {
+          cleanup();
+        }
       }
+      self.effects[key] = { prev: args, cleanup: f(el) };
     }
   }
 };

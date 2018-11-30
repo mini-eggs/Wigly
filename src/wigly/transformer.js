@@ -24,6 +24,7 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
 
     /** @type {ComponentContext} */
     let self = {
+      f,
       states: [],
       effects: [],
       children: {},
@@ -82,14 +83,18 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
               props: {
                 ...vdom.props,
                 oncreate: el => {
-                  if (oncreate) oncreate(el);
+                  if (oncreate) {
+                    oncreate(el);
+                  }
                   defer(() => {
                     runEffects(el, self);
                     giveEnv(f, props.key, self);
                   });
                 },
                 onupdate: el => {
-                  if (onupdate) onupdate(el);
+                  if (onupdate) {
+                    onupdate(el);
+                  }
                   defer(() => {
                     updateVDOM(f, props.key, lastvdom);
                     runEffects(el, self);
@@ -97,10 +102,16 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
                   });
                 },
                 ondestroy: () => {
-                  if (ondestroy) ondestroy();
+                  if (ondestroy) {
+                    ondestroy();
+                  }
                   for (let effect of self.effects) {
                     if (effect && effect.cleanup) {
-                      effect.cleanup();
+                      if (effect.cleanup.then) {
+                        effect.cleanup.then(f => f && f());
+                      } else {
+                        effect.cleanup();
+                      }
                     }
                   }
                   giveEnv(f, props.key, { iter: 0 }); // reset state
