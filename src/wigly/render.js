@@ -1,7 +1,7 @@
 import { defer } from "./constants";
 import { transformer } from "./transformer";
 import { h } from "./jsx";
-import { patch } from "../superfine/superfine";
+import { patch } from "../../node_modules/superfine/src/index.js";
 
 export let render = (f, el) => {
   let cb;
@@ -10,9 +10,6 @@ export let render = (f, el) => {
       h(() => f),
       () => ({}),
       () => ({}),
-      /**
-       * @param {UpperVDOM} vdom
-       */
       vdom => {
         patch(null, vdom, el);
         cb && cb(vdom.element);

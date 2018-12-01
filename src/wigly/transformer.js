@@ -1,14 +1,7 @@
-import { defer, setCurrentlyExecutingComponent, runEffects, traverse } from "./constants";
-import { h, patch } from "../superfine/superfine";
+import { defer, setCurrentlyExecutingComponent, traverse } from "./constants";
+import { runEffects } from "./effect";
+import { h, patch } from "../../node_modules/superfine/src/index.js";
 
-/**
- *
- * @param {ComponentSpec} spec
- * @param {Function} getEnv
- * @param {Function} giveEnv
- * @param {Function} giveVDOM
- * @param {Function} updateVDOM
- */
 export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
   if (typeof spec === "string" || typeof spec === "number") {
     giveVDOM(spec);
@@ -22,7 +15,6 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
   if (typeof f === "function") {
     let lastvdom;
 
-    /** @type {ComponentContext} */
     let self = {
       f,
       states: [],
@@ -35,9 +27,6 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
           spec,
           getEnv,
           giveEnv,
-          /**
-           * @param {LowerVDOM} next
-           */
           next => {
             if (lastvdom && lastvdom.element && lastvdom.element.parentElement) {
               lastvdom = patch(lastvdom, next, lastvdom.element.parentElement);
@@ -50,35 +39,20 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
 
     setCurrentlyExecutingComponent(self);
 
-    /** @type {LowerVDOM} */
     let res = f({ ...props, children });
 
     let work = () => {
       transformer(
         res,
-        /**
-         * @param {Function} component
-         * @param {*} key
-         * @return {ComponentContext}
-         */
         (component, key) => {
           return self.children[component] ? self.children[component][key] : {};
         },
-        /**
-         * @param {Function} component
-         * @param {*} key
-         * @param {ComponentContext} env
-         */
         (component, key, env) => {
           self.children[component] = { ...self.children[component], [key]: env };
         },
-        /**
-         * @param {LowerVDOM} vdom
-         */
         vdom => {
           let { oncreate, onupdate, ondestroy } = { ...vdom.props };
           giveVDOM(
-            /** @type {UpperVDOM} */
             (lastvdom = Object.assign(vdom, {
               props: {
                 ...vdom.props,
@@ -127,19 +101,13 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
             props.key,
             Object.assign(
               lastvdom,
-              traverse(
-                lastvdom,
-                /**
-                 * @param {UpperVDOM} item
-                 */
-                item => {
-                  if (item.internal && item.internal.f === component && key === item.props.key) {
-                    return vdom;
-                  } else {
-                    return item;
-                  }
+              traverse(lastvdom, item => {
+                if (item.internal && item.internal.f === component && key === item.props.key) {
+                  return vdom;
+                } else {
+                  return item;
                 }
-              )
+              })
             )
           );
         }

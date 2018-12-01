@@ -5,6 +5,3 @@ if (typeof module !== "undefined") {
 } else {
   window["wigly"] = wigly;
 }
-
-// export * from "./wigly/wigly";
-// export default wigly;

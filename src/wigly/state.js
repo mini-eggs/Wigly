@@ -1,11 +1,6 @@
 import { defer, getCurrentlyExecutingComponent } from "./constants";
 
-/**
- * @param {*} init
- * @return {[*, Function]} fo
- */
 export let state = init => {
-  /** @type {ComponentContext} */
   let curr = getCurrentlyExecutingComponent();
   let key = curr.iter++;
   let val = curr.states[key];
