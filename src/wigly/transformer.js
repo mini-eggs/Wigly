@@ -16,13 +16,21 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
     let lastvdom;
 
     let self = {
-      f,
       states: [],
       effects: [],
       children: {},
       ...getEnv(f, props.key),
+      env: () => getEnv(f, props.key),
       iter: 0,
       update: () => {
+        // Fishy business -- we have references to old updater functions
+        // within state setters. Don't call these! Get latest and all is well. :)
+        let { env } = getEnv(f, props.key);
+        if (env && env().update !== self.update) {
+          env().update();
+          return;
+        }
+
         transformer(
           spec,
           getEnv,

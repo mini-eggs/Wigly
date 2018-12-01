@@ -17,6 +17,17 @@ export let state = init => {
     val,
     next => {
       curr.states[key] = next;
+      // defer(() => {
+      //   // console.log(curr.test().update);
+      //   // console.log(curr.update);
+      //   console.log(curr.test().update === curr.update);
+
+      //   let updater = curr.test().update || curr.update;
+      //   updater();
+
+      //   // curr.update();
+      //   // curr.test().update();
+      // });
       defer(curr.update);
     }
   ];

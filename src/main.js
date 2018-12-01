@@ -5,3 +5,7 @@ if (typeof module !== "undefined") {
 } else {
   window["wigly"] = wigly;
 }
+
+// export default wigly;
+// export let state = wigly.state;
+// export let effect = wigly.effect;
