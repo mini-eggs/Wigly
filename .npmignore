@@ -3,6 +3,4 @@ example
 test
 .gitignore
 .cache
-.webpack.config.js
-backup
 src
