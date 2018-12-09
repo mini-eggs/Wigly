@@ -1,6 +1,6 @@
 {
   "name": "wigly",
-  "version": "0.5.15",
+  "version": "0.5.16",
   "main": "dist/wigly.es5.js",
   "scripts": {
     "start": "npm run start:clean && npm run start:gcc && npm run start:gzip",

@@ -122,7 +122,7 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
       );
     };
 
-    if (res instanceof Promise) {
+    if (typeof res.then !== "undefined") {
       res.then(file => {
         setCurrentlyExecutingComponent(self);
         res = file.default({ ...props, children });
