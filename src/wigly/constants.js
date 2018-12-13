@@ -15,3 +15,5 @@ export let traverse = (tree, f) => {
   }
   return tree;
 };
+
+export let ensureArr = val => (Array.isArray(val) ? val : [val]);

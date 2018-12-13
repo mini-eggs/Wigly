@@ -1,4 +1,4 @@
-import { defer } from "./constants";
+import { defer, ensureArr } from "./constants";
 import { transformer } from "./transformer";
 import { h } from "./jsx";
 import { patch } from "../../node_modules/superfine/src/index.js";
@@ -7,7 +7,7 @@ export let render = (f, el) => {
   let cb;
   defer(() => {
     transformer(
-      h(() => f),
+      h(() => ensureArr(f)),
       () => ({}),
       () => ({}),
       vdom => {

@@ -3,14 +3,23 @@ import { runEffects } from "./effect";
 import { h, patch } from "../../node_modules/superfine/src/index.js";
 
 export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
-  if (typeof spec === "string" || typeof spec === "number") {
+  if (
+    typeof spec === "string" ||
+    typeof spec === "number" ||
+    typeof spec === "boolean"
+  ) {
     giveVDOM(spec);
     return;
   }
 
-  let { f, props, children = [] } = spec;
+  let [f, ...children] = spec;
 
-  children = children.filter(item => typeof item !== "undefined");
+  let props =
+    typeof children[0] === "object" && !Array.isArray(children[0])
+      ? children.shift()
+      : {};
+
+  // children = children.filter(item => typeof item !== "undefined");
 
   if (typeof f === "function") {
     let lastvdom;
@@ -36,7 +45,11 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
           getEnv,
           giveEnv,
           next => {
-            if (lastvdom && lastvdom.element && lastvdom.element.parentElement) {
+            if (
+              lastvdom &&
+              lastvdom.element &&
+              lastvdom.element.parentElement
+            ) {
               lastvdom = patch(lastvdom, next, lastvdom.element.parentElement);
             }
           },
@@ -56,7 +69,10 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
           return self.children[component] ? self.children[component][key] : {};
         },
         (component, key, env) => {
-          self.children[component] = { ...self.children[component], [key]: env };
+          self.children[component] = {
+            ...self.children[component],
+            [key]: env
+          };
         },
         vdom => {
           let { oncreate, onupdate, ondestroy } = { ...vdom.props };
@@ -110,7 +126,11 @@ export let transformer = (spec, getEnv, giveEnv, giveVDOM, updateVDOM) => {
             Object.assign(
               lastvdom,
               traverse(lastvdom, item => {
-                if (item.internal && item.internal.f === component && key === item.props.key) {
+                if (
+                  item.internal &&
+                  item.internal.f === component &&
+                  key === item.props.key
+                ) {
                   return vdom;
                 } else {
                   return item;

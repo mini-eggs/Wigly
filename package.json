@@ -9,6 +9,7 @@
     "start:gcc:es5": "node_modules/google-closure-compiler-linux/compiler --generate_exports --export_local_property_definitions --isolation_mode IIFE --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT5 --compilation_level SIMPLE --js_output_file=dist/wigly.es5.js --js 'src/**.js' --js 'node_modules/superfine/src/index.js'",
     "start:gcc:es6": "node_modules/google-closure-compiler-linux/compiler --generate_exports --export_local_property_definitions --isolation_mode IIFE --use_types_for_optimization --assume_function_wrapper --formatting SINGLE_QUOTES --module_resolution WEBPACK --language_in=ECMASCRIPT_NEXT --language_out=ECMASCRIPT6 --compilation_level SIMPLE --js_output_file=dist/wigly.es6.js --js 'src/**.js' --js 'node_modules/superfine/src/index.js'",
     "start:gzip": "gzip dist/* -k -f",
+    "docs:start": "gitbook serve docs",
     "test": "ava",
     "size": "wc -c dist/*"
   },
@@ -21,6 +22,7 @@
     "ava": "1.0.0-rc.2",
     "babel-loader": "^8.0.4",
     "browser-env": "^3.2.5",
+    "gitbook-cli": "^2.3.2",
     "google-closure-compiler-linux": "^20181125.0.1"
   },
   "ava": {
