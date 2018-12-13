@@ -47,33 +47,33 @@ let App = () => {
   ];
 };
 
-let Child = () => {
-  effect(() => {
-    console.log("mount");
-    return () => console.log("destroy");
-  });
+// let Child = () => {
+//   effect(() => {
+//     console.log("mount");
+//     return () => console.log("destroy");
+//   }, 0);
 
-  // return <div>child goes here</div>;
+//   // return <div>child goes here</div>;
 
-  return ["div", "child goes here"];
-};
+//   return ["div", "child goes here"];
+// };
 
-App = () => {
-  let [displayChild, set] = state(false);
+// App = () => {
+//   let [displayChild, set] = state(false);
 
-  // return (
-  //   <div>
-  //     <button onclick={() => set(!displayChild)}>click me</button>
-  //     <div>{displayChild && <Child />}</div>
-  //   </div>
-  // );
+//   // return (
+//   //   <div>
+//   //     <button onclick={() => set(!displayChild)}>click me</button>
+//   //     <div>{displayChild && <Child />}</div>
+//   //   </div>
+//   // );
 
-  return [
-    "div",
-    ["button", { onclick: () => set(!displayChild) }, "click me"],
-    [Child],
-    ["div", displayChild && [Child]]
-  ];
-};
+//   return [
+//     "div",
+//     ["button", { onclick: () => set(!displayChild) }, "click me"],
+//     [Child, { key: 1 }],
+//     ["div", displayChild && [Child, { key: 2 }]]
+//   ];
+// };
 
 render(App, document.body);
